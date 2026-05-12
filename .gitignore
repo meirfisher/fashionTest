@@ -1,0 +1,16 @@
+# Python files
+__pycache__/
+*.pyc
+
+# Virtual Environment
+venv/
+env/
+
+# QA Images
+qa_captures/
+*.jpg
+*.png
+
+# OS generated files
+.DS_Store
+Thumbs.db
