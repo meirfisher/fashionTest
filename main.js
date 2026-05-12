@@ -1,0 +1,346 @@
+import {
+    PoseLandmarker,
+    FilesetResolver,
+    DrawingUtils
+} from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/vision_bundle.mjs";
+
+const video = document.getElementById("webcam");
+const canvasElement = document.getElementById("output_canvas");
+const canvasCtx = canvasElement.getContext("2d");
+const loadingOverlay = document.getElementById("loading-overlay");
+const statusBadge = document.getElementById("status-badge");
+const statusIndicatorText = document.getElementById("status-indicator-text");
+const retakeBtn = document.getElementById("retake-btn");
+const bottomSheet = document.getElementById("bottom-sheet");
+const viewfinderWrapper = document.getElementById("viewfinder-wrapper");
+const flashOverlay = document.getElementById("flash-overlay");
+const instructionHeader = document.getElementById("instruction-header");
+
+const heightInput = document.getElementById("user-height");
+const resShoulders = document.getElementById("res-shoulders");
+const resChest = document.getElementById("res-chest");
+const resWaist = document.getElementById("res-waist");
+const resInseam = document.getElementById("res-inseam");
+const resArm = document.getElementById("res-arm");
+
+let poseLandmarker = null;
+let webcamRunning = false;
+let isReadyToScan = false;
+let lastVideoTime = -1;
+let countdownStartTime = null;
+const COUNTDOWN_DURATION_MS = 3000;
+let hasCaptured = false;
+
+const COLOR_SKELETON = "#39FF14";
+
+// Create Pose Landmarker
+const initializeMediaPipe = async () => {
+    try {
+        const vision = await FilesetResolver.forVisionTasks(
+            "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/wasm"
+        );
+        poseLandmarker = await PoseLandmarker.createFromOptions(vision, {
+            baseOptions: {
+                modelAssetPath: "./public/pose_landmarker_full.task",
+                delegate: "GPU"
+            },
+            runningMode: "VIDEO",
+            numPoses: 1,
+            minPoseDetectionConfidence: 0.5,
+            minPosePresenceConfidence: 0.5,
+            minTrackingConfidence: 0.5,
+        });
+        loadingOverlay.classList.add("fade-out");
+        enableCamera();
+    } catch (error) {
+        console.error("Error initializing MediaPipe:", error);
+        instructionHeader.textContent = "Error loading model";
+    }
+};
+
+const enableCamera = async () => {
+    if (!poseLandmarker) return;
+
+    try {
+        const constraints = {
+            video: {
+                facingMode: "user",
+                width: { ideal: 1280 },
+                height: { ideal: 720 }
+            }
+        };
+
+        const stream = await navigator.mediaDevices.getUserMedia(constraints);
+        video.srcObject = stream;
+        video.addEventListener("loadeddata", predictWebcam);
+        webcamRunning = true;
+    } catch (error) {
+        console.error("Error accessing webcam:", error);
+    }
+};
+
+const checkReadyToScan = (landmarks) => {
+    // 11: left shoulder, 12: right shoulder
+    // 13: left elbow, 14: right elbow
+    // 15: left wrist, 16: right wrist
+    // 27: left ankle, 28: right ankle
+
+    const requiredIndices = [11, 12, 13, 14, 15, 16, 23, 24, 27, 28];
+    for (let i of requiredIndices) {
+        if (!landmarks[i] || landmarks[i].visibility < 0.6) {
+            return false;
+        }
+    }
+
+    // Check T-Pose
+    const lS = landmarks[11], rS = landmarks[12];
+    const lW = landmarks[15], rW = landmarks[16];
+
+    const yTolerance = 0.15;
+    const tPoseLeft = Math.abs(lW.y - lS.y) < yTolerance;
+    const tPoseRight = Math.abs(rW.y - rS.y) < yTolerance;
+
+    const xDistanceLeft = Math.abs(lW.x - lS.x);
+    const xDistanceRight = Math.abs(rW.x - rS.x);
+    const armsExtended = xDistanceLeft > 0.15 && xDistanceRight > 0.15;
+
+    return tPoseLeft && tPoseRight && armsExtended;
+};
+
+const calculateDistance = (p1, p2, width, height) => {
+    const dx = (p1.x - p2.x) * width;
+    const dy = (p1.y - p2.y) * height;
+    return Math.sqrt(dx * dx + dy * dy);
+};
+
+const calculateMeasurements = (landmarks) => {
+    const actualHeightCm = parseFloat(heightInput.value) || 175;
+    const vWidth = video.videoWidth;
+    const vHeight = video.videoHeight;
+
+    const nose = landmarks[0];
+    const leftEye = landmarks[2];
+    const rightEye = landmarks[5];
+    const eyeNoseDist = calculateDistance(nose, { x: (leftEye.x + rightEye.x) / 2, y: (leftEye.y + rightEye.y) / 2 }, vWidth, vHeight);
+    const topOfHeadY = ((leftEye.y + rightEye.y) / 2) * vHeight - (eyeNoseDist * 3);
+    const lowestAnkleY = Math.max(landmarks[27].y, landmarks[28].y) * vHeight;
+
+    const detectedHeightPixels = lowestAnkleY - topOfHeadY;
+    if (detectedHeightPixels <= 0) return;
+
+    const ratio = actualHeightCm / detectedHeightPixels;
+
+    const shoulderPixels = calculateDistance(landmarks[11], landmarks[12], vWidth, vHeight);
+
+    const lChest = { x: landmarks[11].x, y: landmarks[11].y + 0.05 };
+    const rChest = { x: landmarks[12].x, y: landmarks[12].y + 0.05 };
+    const chestPixels = calculateDistance(lChest, rChest, vWidth, vHeight) * 2.5;
+
+    const waistPixels = calculateDistance(landmarks[23], landmarks[24], vWidth, vHeight) * 2.4;
+
+    const crotch = {
+        x: (landmarks[23].x + landmarks[24].x) / 2,
+        y: (landmarks[23].y + landmarks[24].y) / 2
+    };
+    const avgAnkle = {
+        x: (landmarks[27].x + landmarks[28].x) / 2,
+        y: (landmarks[27].y + landmarks[28].y) / 2
+    };
+    const inseamPixels = calculateDistance(crotch, avgAnkle, vWidth, vHeight);
+    
+    const leftArmPixels = calculateDistance(landmarks[11], landmarks[15], vWidth, vHeight);
+    const rightArmPixels = calculateDistance(landmarks[12], landmarks[16], vWidth, vHeight);
+    const armPixels = (leftArmPixels + rightArmPixels) / 2;
+
+    resShoulders.textContent = (shoulderPixels * ratio).toFixed(1);
+    resChest.textContent = (chestPixels * ratio).toFixed(1);
+    resWaist.textContent = (waistPixels * ratio).toFixed(1);
+    resInseam.textContent = (inseamPixels * ratio).toFixed(1);
+    resArm.textContent = (armPixels * ratio).toFixed(1);
+};
+
+const predictWebcam = async () => {
+    if (canvasElement.width !== video.videoWidth) {
+        canvasElement.width = video.videoWidth;
+        canvasElement.height = video.videoHeight;
+    }
+
+    let startTimeMs = performance.now();
+    if (lastVideoTime !== video.currentTime) {
+        lastVideoTime = video.currentTime;
+        poseLandmarker.detectForVideo(video, startTimeMs, (result) => {
+            canvasCtx.save();
+            canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+
+            const heightVal = parseFloat(heightInput.value);
+            const isHeightValid = !isNaN(heightVal) && heightVal > 0;
+
+            if (hasCaptured) {
+                canvasCtx.restore();
+                return;
+            }
+
+            if (!isHeightValid) {
+                instructionHeader.textContent = "Please enter your height above to begin.";
+                statusBadge.style.opacity = "0";
+                canvasCtx.restore();
+                return;
+            }
+
+            if (!result.landmarks || result.landmarks.length === 0) {
+                statusBadge.classList.remove("badge-gold");
+                viewfinderWrapper.classList.remove("aura-glow", "border-scan-white-pulse", "border-scan-green");
+                viewfinderWrapper.classList.add("border-scan-red");
+                instructionHeader.textContent = "Step back into the frame.";
+                statusBadge.style.opacity = "1";
+                statusIndicatorText.textContent = "SCANNING";
+                countdownStartTime = null;
+            } else {
+                const landmarks = result.landmarks[0];
+                isReadyToScan = checkReadyToScan(landmarks);
+
+                if (isReadyToScan) {
+                    if (countdownStartTime === null) {
+                        countdownStartTime = performance.now();
+                    }
+
+                    const timeElapsed = performance.now() - countdownStartTime;
+                    const timeLeft = Math.ceil((COUNTDOWN_DURATION_MS - timeElapsed) / 1000);
+
+                    if (timeLeft > 0) {
+                        instructionHeader.innerHTML = `Perfect.<br/>Hold still... ${timeLeft}`;
+                        statusBadge.classList.add("badge-gold");
+                        viewfinderWrapper.classList.remove("aura-glow", "border-scan-red", "border-scan-green");
+                        viewfinderWrapper.classList.add("border-scan-white-pulse");
+                        statusIndicatorText.textContent = "READY";
+                    } else {
+                        instructionHeader.textContent = "Scan Complete";
+                        statusBadge.classList.remove("badge-gold");
+                        viewfinderWrapper.classList.remove("aura-glow", "border-scan-red", "border-scan-white-pulse");
+                        viewfinderWrapper.classList.add("border-scan-green");
+                        statusIndicatorText.textContent = "CAPTURED";
+                        
+                        // Flash animation and background darken
+                        flashOverlay.classList.add("flash-active");
+                        setTimeout(() => flashOverlay.classList.remove("flash-active"), 150);
+                        document.body.classList.add("bg-darken");
+                        
+                        calculateMeasurements(landmarks);
+                        hasCaptured = true;
+                        video.pause();
+                        webcamRunning = false;
+                        
+                        setTimeout(() => {
+                            viewfinderWrapper.style.display = "none";
+                            if (video.srcObject) {
+                                video.srcObject.getTracks().forEach(track => track.stop());
+                            }
+                            
+                            // Show bottom sheet
+                            bottomSheet.classList.remove("translate-y-[150%]", "translate-y-[200%]");
+                            bottomSheet.classList.add("translate-y-0");
+                            
+                            document.body.classList.add("scroll-enabled");
+                        }, 1000);
+                        
+                        // Solid skeleton line for captured state
+                        canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+                        const drawingUtils = new DrawingUtils(canvasCtx);
+                        drawingUtils.drawConnectors(landmarks, PoseLandmarker.POSE_CONNECTIONS, {
+                            color: COLOR_SKELETON,
+                            lineWidth: 2
+                        });
+                        drawingUtils.drawLandmarks(landmarks, {
+                            radius: 3,
+                            color: COLOR_SKELETON,
+                            lineWidth: 0
+                        });
+
+                        const tempCanvas = document.createElement("canvas");
+                        tempCanvas.width = video.videoWidth;
+                        tempCanvas.height = video.videoHeight;
+                        const tempCtx = tempCanvas.getContext("2d");
+                        tempCtx.drawImage(video, 0, 0, tempCanvas.width, tempCanvas.height);
+                        
+                        const dataUrl = tempCanvas.toDataURL("image/jpeg", 0.9);
+                        
+                        fetch('/save-frame', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ image: dataUrl })
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.status === 'success') {
+                                console.log('Frame saved to server:', data.filename);
+                            } else {
+                                console.error('Error saving frame:', data.message);
+                            }
+                        })
+                        .catch(err => console.error('Fetch error:', err));
+                        
+                        canvasCtx.restore();
+                        return; // exit the loop
+                    }
+                } else {
+                    countdownStartTime = null;
+                    statusBadge.classList.remove("badge-gold");
+                    viewfinderWrapper.classList.remove("aura-glow", "border-scan-white-pulse", "border-scan-green");
+                    viewfinderWrapper.classList.add("border-scan-red");
+                    instructionHeader.innerHTML = "Stand back so your whole body is visible,<br/>and extend your arms straight to the sides.";
+                    statusBadge.style.opacity = "1";
+                    statusIndicatorText.textContent = "SCANNING";
+                }
+
+                // Normal scanning skeleton
+                if (!hasCaptured) {
+                    const drawingUtils = new DrawingUtils(canvasCtx);
+                    drawingUtils.drawConnectors(landmarks, PoseLandmarker.POSE_CONNECTIONS, {
+                        color: COLOR_SKELETON,
+                        lineWidth: 2
+                    });
+                    drawingUtils.drawLandmarks(landmarks, {
+                        radius: 2,
+                        color: COLOR_SKELETON,
+                        lineWidth: 2
+                    });
+                }
+            }
+            canvasCtx.restore();
+        });
+    }
+
+    if (webcamRunning) {
+        window.requestAnimationFrame(predictWebcam);
+    }
+};
+
+retakeBtn.addEventListener("click", () => {
+    hasCaptured = false;
+    isReadyToScan = false;
+    countdownStartTime = null;
+    
+    // Hide bottom sheet and reset states
+    bottomSheet.classList.remove("translate-y-0");
+    bottomSheet.classList.add("translate-y-[200%]");
+    document.body.classList.remove("bg-darken");
+    viewfinderWrapper.style.display = "";
+    viewfinderWrapper.classList.remove("aura-glow", "border-scan-green", "border-scan-white-pulse", "border-scan-red");
+    statusBadge.classList.remove("badge-gold");
+    
+    document.body.classList.remove("scroll-enabled");
+    
+    resShoulders.textContent = "--";
+    resChest.textContent = "--";
+    resWaist.textContent = "--";
+    resInseam.textContent = "--";
+    resArm.textContent = "--";
+    
+    instructionHeader.textContent = "Preparing...";
+    statusBadge.style.opacity = "1";
+    statusIndicatorText.textContent = "SCANNING";
+
+    enableCamera();
+});
+
+initializeMediaPipe();

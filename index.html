@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html class="light" lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport"/>
+    <title>AI Fashion Scanner</title>
+    <link href="https://fonts.googleapis.com" rel="preconnect"/>
+    <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script id="tailwind-config">
+    tailwind.config = {
+        darkMode: "class",
+        theme: {
+            extend: {
+                "colors": {
+                    "on-secondary-fixed-variant": "#584141",
+                    "secondary-fixed": "#fddada",
+                    "surface": "#fcf9f8",
+                    "error": "#ba1a1a",
+                    "error-container": "#ffdad6",
+                    "on-error-container": "#93000a",
+                    "surface-container-lowest": "#ffffff",
+                    "surface-container-high": "#eae7e7",
+                    "on-primary-container": "#5b3912",
+                    "primary-container": "#d4a373",
+                    "tertiary-fixed": "#e3e2e0",
+                    "on-secondary": "#ffffff",
+                    "secondary-fixed-dim": "#dfbfbf",
+                    "on-primary-fixed-variant": "#623f18",
+                    "surface-bright": "#fcf9f8",
+                    "primary-fixed": "#ffdcbd",
+                    "surface-container-highest": "#e5e2e1",
+                    "on-surface": "#1c1b1b",
+                    "secondary-container": "#fddada",
+                    "tertiary-fixed-dim": "#c7c6c5",
+                    "on-secondary-fixed": "#291717",
+                    "on-secondary-container": "#785e5e",
+                    "on-surface-variant": "#50453b",
+                    "surface-variant": "#e5e2e1",
+                    "tertiary-container": "#acacab",
+                    "on-background": "#1c1b1b",
+                    "outline-variant": "#d4c4b7",
+                    "on-tertiary-container": "#3f403f",
+                    "on-tertiary-fixed": "#1a1c1b",
+                    "on-primary": "#ffffff",
+                    "secondary": "#715858",
+                    "inverse-primary": "#f0bd8b",
+                    "primary": "#7d562d",
+                    "on-error": "#ffffff",
+                    "primary-fixed-dim": "#f0bd8b",
+                    "outline": "#82756a",
+                    "on-tertiary-fixed-variant": "#464746",
+                    "background": "#fcf9f8",
+                    "tertiary": "#5e5e5d",
+                    "surface-container": "#f0eded",
+                    "inverse-on-surface": "#f3f0ef",
+                    "surface-tint": "#7d562d",
+                    "on-primary-fixed": "#2c1600",
+                    "surface-container-low": "#f6f3f2",
+                    "inverse-surface": "#313030",
+                    "on-tertiary": "#ffffff",
+                    "surface-dim": "#dcd9d9"
+                },
+                "borderRadius": {
+                    "DEFAULT": "0.125rem",
+                    "lg": "0.25rem",
+                    "xl": "0.5rem",
+                    "full": "0.75rem"
+                },
+                "spacing": {
+                    "md": "16px",
+                    "lg": "24px",
+                    "xs": "4px",
+                    "sm": "8px",
+                    "xxl": "80px",
+                    "container-max": "1280px",
+                    "gutter": "24px",
+                    "unit": "4px",
+                    "xl": "40px"
+                },
+                "fontFamily": {
+                    "headline-md": ["Inter"],
+                    "display-lg-mobile": ["Inter"],
+                    "body-lg": ["Inter"],
+                    "body-md": ["Inter"],
+                    "headline-lg-mobile": ["Inter"],
+                    "display-lg": ["Inter"],
+                    "headline-lg": ["Inter"],
+                    "label-md": ["Inter"]
+                },
+                "fontSize": {
+                    "headline-md": ["24px", { "lineHeight": "1.3", "fontWeight": "400" }],
+                    "display-lg-mobile": ["36px", { "lineHeight": "1.1", "fontWeight": "300" }],
+                    "body-lg": ["18px", { "lineHeight": "1.6", "fontWeight": "400" }],
+                    "body-md": ["16px", { "lineHeight": "1.6", "fontWeight": "400" }],
+                    "headline-lg-mobile": ["28px", { "lineHeight": "1.2", "fontWeight": "400" }],
+                    "display-lg": ["48px", { "lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "300" }],
+                    "headline-lg": ["32px", { "lineHeight": "1.2", "letterSpacing": "-0.01em", "fontWeight": "400" }],
+                    "label-md": ["12px", { "lineHeight": "1", "letterSpacing": "0.08em", "fontWeight": "600" }]
+                }
+            }
+        }
+    }
+    </script>
+    <link rel="stylesheet" href="style.css">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#fcf9f8">
+    <script type="module" src="main.js" defer></script>
+</head>
+<body class="bg-background text-on-background min-h-screen flex flex-col font-body-md antialiased overflow-x-hidden">
+
+    <!-- Loading Overlay -->
+    <div id="loading-overlay" class="fixed inset-0 z-[60] bg-background flex flex-col items-center justify-center transition-opacity duration-700 ease-in-out">
+        <p class="font-headline-md text-headline-md text-on-surface animate-pulse text-center px-4">
+            Loading Model...
+        </p>
+    </div>
+
+    <!-- Branding Section -->
+    <header class="w-full flex flex-col items-center justify-center pt-8 pb-2 z-10 relative">
+        <h1 class="text-[#1A1A1A] text-2xl tracking-[0.4em] uppercase text-center pl-[0.4em] font-couture">
+            C O U T U R E
+        </h1>
+        <div class="w-64 h-[0.5px] mt-4 bg-gradient-to-r from-transparent via-[#1A1A1A]/30 to-transparent"></div>
+    </header>
+
+    <!-- Main Content Canvas -->
+    <main class="flex-grow flex flex-col items-center justify-start pt-4 pb-lg px-lg md:px-xl w-full max-w-container-max mx-auto relative overflow-hidden">
+        
+        <!-- Instruction Header & Height Input -->
+        <div class="flex flex-col items-center w-full max-w-md mb-4">
+            <div class="flex items-center justify-center border-b border-outline-variant/50 mb-4 pb-1">
+                <span class="text-on-surface-variant font-label-md uppercase tracking-widest text-xs mr-2">Height:</span>
+                <input type="number" id="user-height" placeholder="175" class="bg-transparent border-0 focus:ring-0 text-on-surface font-headline-md text-center text-lg w-16 p-0 placeholder-tertiary transition-colors outline-none shadow-none" style="background: transparent;">
+                <span class="text-on-surface-variant font-label-md uppercase tracking-widest text-xs ml-1">cm</span>
+            </div>
+            
+            <h2 id="instruction-header" class="font-headline-lg-mobile md:font-headline-lg text-headline-lg-mobile md:text-headline-lg text-on-surface tracking-tight leading-tight text-center min-h-[70px]">
+                Preparing...
+            </h2>
+        </div>
+
+        <!-- Middle Viewfinder -->
+        <div class="relative w-full max-w-[280px] aspect-[9/16] rounded-[3rem] overflow-hidden border border-outline-variant/30 shadow-lg flex-shrink-0 bg-surface-container-lowest z-10 transition-transform duration-500 ease-out" id="viewfinder-wrapper">
+            <video id="webcam" class="absolute inset-0 w-full h-full object-cover object-center mix-blend-luminosity opacity-90" autoplay playsinline muted></video>
+            <canvas id="output_canvas" class="absolute inset-0 w-full h-full object-cover object-center pointer-events-none z-10"></canvas>
+            
+            <!-- Dark Overlay for Contrast -->
+            <div class="absolute inset-0 bg-gradient-to-t from-surface/80 via-transparent to-transparent pointer-events-none z-0"></div>
+            
+            <!-- Status Indicator -->
+            <div id="status-badge" class="absolute top-6 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-surface/80 backdrop-blur-md px-3 py-1.5 rounded-full border border-outline-variant/30 shadow-sm transition-opacity duration-300 z-20">
+                <div class="w-2 h-2 rounded-full bg-on-surface animate-pulse" id="status-indicator-dot"></div>
+                <span class="font-label-md text-label-md text-on-surface uppercase tracking-widest text-[10px]" id="status-indicator-text">Scanning</span>
+            </div>
+            
+            <!-- Flash Overlay for Capture -->
+            <div id="flash-overlay" class="absolute inset-0 bg-white opacity-0 pointer-events-none transition-opacity duration-150 z-30"></div>
+        </div>
+
+        <!-- Bottom Dashboard Panel (Hidden initially) -->
+        <div id="bottom-sheet" class="glass-panel w-full max-w-sm rounded-2xl p-4 mt-4 relative transform transition-transform duration-700 translate-y-[200%] absolute bottom-0 md:relative z-20 shadow-[0_-20px_40px_rgba(45,45,45,0.06)]">
+            <div class="grid grid-cols-2 gap-x-8 gap-y-6 relative">
+                <!-- Inner Divider -->
+                <div class="absolute left-1/2 top-2 bottom-2 w-px bg-outline-variant/40 -translate-x-1/2"></div>
+                
+                <!-- Measurement Item -->
+                <div class="flex flex-col items-center text-center">
+                    <span class="font-label-md text-label-md text-on-surface-variant mb-1 uppercase">Shoulder</span>
+                    <span class="font-headline-md text-headline-md text-on-surface"><span id="res-shoulders">--</span><span class="text-body-md text-on-surface-variant ml-0.5">cm</span></span>
+                </div>
+                
+                <!-- Measurement Item -->
+                <div class="flex flex-col items-center text-center">
+                    <span class="font-label-md text-label-md text-on-surface-variant mb-1 uppercase">Chest</span>
+                    <span class="font-headline-md text-headline-md text-on-surface"><span id="res-chest">--</span><span class="text-body-md text-on-surface-variant ml-0.5">cm</span></span>
+                </div>
+                
+                <!-- Measurement Item -->
+                <div class="flex flex-col items-center text-center">
+                    <span class="font-label-md text-label-md text-on-surface-variant mb-1 uppercase">Waist</span>
+                    <span class="font-headline-md text-headline-md text-on-surface"><span id="res-waist">--</span><span class="text-body-md text-on-surface-variant ml-0.5">cm</span></span>
+                </div>
+                
+                <!-- Measurement Item -->
+                <div class="flex flex-col items-center text-center">
+                    <span class="font-label-md text-label-md text-on-surface-variant mb-1 uppercase">Inseam</span>
+                    <span class="font-headline-md text-headline-md text-on-surface"><span id="res-inseam">--</span><span class="text-body-md text-on-surface-variant ml-0.5">cm</span></span>
+                </div>
+                
+                <!-- Measurement Item -->
+                <div class="flex flex-col items-center text-center">
+                    <span class="font-label-md text-label-md text-on-surface-variant mb-1 uppercase">Arm Length</span>
+                    <span class="font-headline-md text-headline-md text-on-surface"><span id="res-arm">--</span><span class="text-body-md text-on-surface-variant ml-0.5">cm</span></span>
+                </div>
+                
+                <!-- Spacer for symmetry -->
+                <div class="flex flex-col items-center text-center"></div>
+            </div>
+            
+            <!-- Primary Action -->
+            <div class="w-full mt-4 mb-2">
+                <button class="w-full bg-secondary-container text-on-secondary-fixed font-body-lg py-4 rounded-full flex justify-center items-center gap-2 hover:opacity-90 transition-opacity focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background shadow-sm">
+                    <span>Save Measurements</span>
+                    <span class="material-symbols-outlined text-[20px]" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+                </button>
+                <button id="retake-btn" class="w-full py-3 mt-2 text-center outline-none">
+                    <span class="font-label-md text-label-md text-secondary underline decoration-1 underline-offset-4 hover:text-on-surface transition-colors uppercase tracking-widest text-[11px]">
+                        Retake Scan
+                    </span>
+                </button>
+            </div>
+        </div>
+    </main>
+
+</body>
+</html>

@@ -1,0 +1,122 @@
+/* style.css - Mirror UI V2 Overrides */
+
+.material-symbols-outlined {
+    font-family: 'Material Symbols Outlined';
+    font-weight: normal;
+    font-style: normal;
+    font-size: 24px;
+    line-height: 1;
+    letter-spacing: normal;
+    text-transform: none;
+    display: inline-block;
+    white-space: nowrap;
+    word-wrap: normal;
+    direction: ltr;
+    -webkit-font-feature-settings: 'liga';
+    font-feature-settings: 'liga';
+    -webkit-font-smoothing: antialiased;
+}
+
+body {
+    min-height: 100dvh;
+}
+
+.glass-panel {
+    background-color: rgba(255, 255, 255, 0.6);
+    backdrop-filter: blur(40px);
+    -webkit-backdrop-filter: blur(40px);
+    border: 1px solid rgba(255, 255, 255, 0.8);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.03);
+}
+
+/* Ensure video and canvas are mirrored and positioned properly */
+#webcam, #output_canvas {
+    transform: scaleX(-1); /* Mirror for front-facing */
+    object-fit: cover;
+}
+
+#output_canvas {
+    z-index: 10;
+}
+
+/* Remove default number input spinners for elegant look */
+input[type=number]::-webkit-inner-spin-button, 
+input[type=number]::-webkit-outer-spin-button { 
+    -webkit-appearance: none; 
+    margin: 0; 
+}
+input[type=number] {
+    -moz-appearance: textfield;
+    appearance: textfield;
+}
+
+/* Scroll Enabled Overrides */
+body.scroll-enabled {
+    height: auto !important;
+    overflow: auto !important;
+    display: block; /* Override flex to allow natural scrolling */
+}
+
+/* Smooth fade out utility */
+.fade-out {
+    opacity: 0 !important;
+    pointer-events: none !important;
+}
+
+/* Dynamic State Utilities */
+body.bg-darken {
+    background-color: #e5e2e1 !important; /* surface-variant from tailwind config */
+}
+
+.aura-glow {
+    box-shadow: 0 0 50px rgba(212, 163, 115, 0.6) !important; /* matches primary-container */
+    border-color: rgba(212, 163, 115, 0.8) !important;
+}
+
+.badge-gold {
+    background-color: rgba(212, 163, 115, 0.3) !important;
+    color: #5b3912 !important; /* on-primary-container */
+}
+
+.flash-active {
+    opacity: 1 !important;
+}
+
+/* Bottom Sheet adjustments */
+#bottom-sheet {
+    position: absolute;
+    bottom: 24px;
+    z-index: 40;
+}
+@media (max-height: 800px) {
+    #bottom-sheet {
+        position: relative;
+        bottom: auto;
+    }
+}
+
+/* Dynamic Viewfinder Glows */
+.border-scan-red {
+    border: 1px solid #ff4444 !important;
+    box-shadow: 0 0 8px rgba(255, 68, 68, 0.4) !important;
+}
+
+@keyframes pulse-white {
+    0%, 100% { border-color: rgba(255, 255, 255, 0.3); box-shadow: 0 0 4px rgba(255, 255, 255, 0.1); }
+    50% { border-color: rgba(255, 255, 255, 1); box-shadow: 0 0 12px rgba(255, 255, 255, 0.6); }
+}
+
+.border-scan-white-pulse {
+    border: 1px solid white !important;
+    animation: pulse-white 1s infinite !important;
+}
+
+.border-scan-green {
+    border: 1px solid #39FF14 !important;
+    box-shadow: 0 0 12px rgba(57, 255, 20, 0.6) !important;
+}
+
+/* Branding Typography */
+.font-couture {
+    font-family: 'Playfair Display', serif;
+}

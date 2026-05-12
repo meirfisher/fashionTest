@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>AI Fashion Scanner</title>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+  tailwind.config = {
+    darkMode: "class",
+    theme: {
+      extend: {
+        "colors": {
+                "on-secondary-fixed-variant": "#584141",
+                "secondary-fixed": "#fddada",
+                "surface": "#fcf9f8",
+                "error": "#ba1a1a",
+                "error-container": "#ffdad6",
+                "on-error-container": "#93000a",
+                "surface-container-lowest": "#ffffff",
+                "surface-container-high": "#eae7e7",
+                "on-primary-container": "#5b3912",
+                "primary-container": "#d4a373",
+                "tertiary-fixed": "#e3e2e0",
+                "on-secondary": "#ffffff",
+                "secondary-fixed-dim": "#dfbfbf",
+                "on-primary-fixed-variant": "#623f18",
+                "surface-bright": "#fcf9f8",
+                "primary-fixed": "#ffdcbd",
+                "surface-container-highest": "#e5e2e1",
+                "on-surface": "#1c1b1b",
+                "secondary-container": "#fddada",
+                "tertiary-fixed-dim": "#c7c6c5",
+                "on-secondary-fixed": "#291717",
+                "on-secondary-container": "#785e5e",
+                "on-surface-variant": "#50453b",
+                "surface-variant": "#e5e2e1",
+                "tertiary-container": "#acacab",
+                "on-background": "#1c1b1b",
+                "outline-variant": "#d4c4b7",
+                "on-tertiary-container": "#3f403f",
+                "on-tertiary-fixed": "#1a1c1b",
+                "on-primary": "#ffffff",
+                "secondary": "#715858",
+                "inverse-primary": "#f0bd8b",
+                "primary": "#7d562d",
+                "on-error": "#ffffff",
+                "primary-fixed-dim": "#f0bd8b",
+                "outline": "#82756a",
+                "on-tertiary-fixed-variant": "#464746",
+                "background": "#fcf9f8",
+                "tertiary": "#5e5e5d",
+                "surface-container": "#f0eded",
+                "inverse-on-surface": "#f3f0ef",
+                "surface-tint": "#7d562d",
+                "on-primary-fixed": "#2c1600",
+                "surface-container-low": "#f6f3f2",
+                "inverse-surface": "#313030",
+                "on-tertiary": "#ffffff",
+                "surface-dim": "#dcd9d9"
+        },
+        "borderRadius": {
+                "DEFAULT": "0.125rem",
+                "lg": "0.25rem",
+                "xl": "0.5rem",
+                "full": "0.75rem"
+        },
+        "spacing": {
+                "md": "16px",
+                "lg": "24px",
+                "xs": "4px",
+                "sm": "8px",
+                "xxl": "80px",
+                "container-max": "1280px",
+                "gutter": "24px",
+                "unit": "4px",
+                "xl": "40px"
+        },
+        "fontFamily": {
+                "headline-md": [
+                        "Inter"
+                ],
+                "display-lg-mobile": [
+                        "Inter"
+                ],
+                "body-lg": [
+                        "Inter"
+                ],
+                "body-md": [
+                        "Inter"
+                ],
+                "headline-lg-mobile": [
+                        "Inter"
+                ],
+                "display-lg": [
+                        "Inter"
+                ],
+                "headline-lg": [
+                        "Inter"
+                ],
+                "label-md": [
+                        "Inter"
+                ]
+        },
+        "fontSize": {
+                "headline-md": [
+                        "24px",
+                        {
+                                "lineHeight": "1.3",
+                                "fontWeight": "400"
+                        }
+                ],
+                "display-lg-mobile": [
+                        "36px",
+                        {
+                                "lineHeight": "1.1",
+                                "fontWeight": "300"
+                        }
+                ],
+                "body-lg": [
+                        "18px",
+                        {
+                                "lineHeight": "1.6",
+                                "fontWeight": "400"
+                        }
+                ],
+                "body-md": [
+                        "16px",
+                        {
+                                "lineHeight": "1.6",
+                                "fontWeight": "400"
+                        }
+                ],
+                "headline-lg-mobile": [
+                        "28px",
+                        {
+                                "lineHeight": "1.2",
+                                "fontWeight": "400"
+                        }
+                ],
+                "display-lg": [
+                        "48px",
+                        {
+                                "lineHeight": "1.1",
+                                "letterSpacing": "-0.02em",
+                                "fontWeight": "300"
+                        }
+                ],
+                "headline-lg": [
+                        "32px",
+                        {
+                                "lineHeight": "1.2",
+                                "letterSpacing": "-0.01em",
+                                "fontWeight": "400"
+                        }
+                ],
+                "label-md": [
+                        "12px",
+                        {
+                                "lineHeight": "1",
+                                "letterSpacing": "0.08em",
+                                "fontWeight": "600"
+                        }
+                ]
+        }
+},
+    },
+  }
+</script>
+<style>
+        .glass-panel {
+            background-color: rgba(255, 255, 255, 0.6);
+            backdrop-filter: blur(40px);
+            -webkit-backdrop-filter: blur(40px);
+            border: 1px solid rgba(255, 255, 255, 0.8);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.03);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+</head>
+<body class="bg-background text-on-background min-h-screen flex flex-col font-body-md antialiased overflow-x-hidden">
+<!-- TopAppBar -->
+<header class="bg-surface/80 backdrop-blur-3xl text-on-surface border-b border-outline-variant/30 shadow-sm fixed top-0 w-full z-50 flex justify-between items-center px-lg py-md transition-colors">
+<button class="text-on-surface hover:bg-surface-variant transition-colors p-2 rounded-full focus:outline-none">
+<span class="material-symbols-outlined block" style="font-variation-settings: 'FILL' 0;">menu</span>
+</button>
+<h1 class="font-headline-md text-headline-md tracking-tighter text-on-surface">
+            MIRROR_SCAN
+        </h1>
+<button class="text-on-surface hover:bg-surface-variant transition-colors p-2 rounded-full focus:outline-none">
+<span class="material-symbols-outlined block" style="font-variation-settings: 'FILL' 0;">info</span>
+</button>
+</header>
+<!-- Main Content Canvas -->
+<main class="flex-grow flex flex-col items-center justify-start pt-32 pb-lg px-lg md:px-xl w-full max-w-container-max mx-auto">
+<!-- Instruction Header -->
+<div class="text-center w-full max-w-md mb-8">
+<h2 class="font-headline-lg-mobile md:font-headline-lg text-headline-lg-mobile md:text-headline-lg text-on-surface tracking-tight leading-tight">
+                Step back and<br/>extend your arms.
+            </h2>
+</div>
+<!-- Middle Viewfinder -->
+<div class="relative w-full max-w-[280px] aspect-[9/16] rounded-[3rem] overflow-hidden border border-outline-variant/30 shadow-lg flex-shrink-0 bg-surface-container-lowest">
+<!-- Camera Feed Placeholder Image -->
+<img alt="Live scanning feed" class="absolute inset-0 w-full h-full object-cover opacity-90 mix-blend-luminosity" data-alt="A first-person view looking into a highly futuristic, narrow vertical smart mirror interface. Inside the reflection, a person stands in a stark, minimalist dark studio environment, extending their arms slightly outwards in a neutral pose. The surrounding environment is pitch black, emphasizing the technical, high-fashion cyberpunk aesthetic of the digital interface." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBD30A8fTh1XL7cPwv1qxO_iWQQqef_vHAiNYvCCjbXduqNhCs07vGnVOzVRxl9lotQDCT4LZBAx6Y4G-XwRxPFX5CKJHCOBxy0c26NrQPJGaxMW5PNY5D7wnMprRv9nwCimjP94TOPQYvXEXneCdDUCgma329cd7PuAb3KuN8U9GoKVoe9UzjR_B2vgk6yigyHEz6VOeAR_hdqoL5rp55EAwuB9fE01I7Qs2AMTrYLVZnbcBIdrqP5Q5p-CCl2XTft89hru5gBmuI"/>
+<!-- Dark Overlay for Contrast -->
+<div class="absolute inset-0 bg-gradient-to-t from-surface/80 via-transparent to-transparent"></div>
+<!-- Neon Green Skeleton Overlay -->
+<svg class="absolute inset-0 w-full h-full text-[#39FF14] drop-shadow-[0_0_8px_rgba(57,255,20,0.6)]" preserveaspectratio="xMidYMid meet" viewbox="0 0 100 200">
+<!-- Head -->
+<circle cx="50" cy="30" fill="none" r="12" stroke="currentColor" stroke-dasharray="2 2" stroke-width="1"></circle>
+<path d="M 50 18 L 50 15 M 50 42 L 50 48" stroke="currentColor" stroke-width="1"></path>
+<!-- Spine -->
+<line stroke="currentColor" stroke-width="1.5" x1="50" x2="50" y1="48" y2="100"></line>
+<!-- Shoulders/Arms -->
+<path d="M 50 55 L 25 60 L 15 90 M 50 55 L 75 60 L 85 90" fill="none" stroke="currentColor" stroke-width="1"></path>
+<!-- Hips/Legs -->
+<path d="M 50 100 L 35 110 L 30 160 M 50 100 L 65 110 L 70 160" fill="none" stroke="currentColor" stroke-width="1"></path>
+<!-- Scanning Line Effect -->
+<line class="opacity-50" stroke="currentColor" stroke-width="0.5" x1="10" x2="90" y1="80" y2="80"></line>
+<line class="opacity-50" stroke="currentColor" stroke-width="0.5" x1="20" x2="80" y1="120" y2="120"></line>
+</svg>
+<!-- Status Indicator -->
+<div class="absolute top-6 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-surface/80 backdrop-blur-md px-3 py-1.5 rounded-full border border-outline-variant/30 shadow-sm">
+<div class="w-2 h-2 rounded-full bg-on-surface animate-pulse"></div>
+<span class="font-label-md text-label-md text-on-surface uppercase tracking-widest text-[10px]">Scanning</span>
+</div>
+</div>
+<!-- Bottom Dashboard Panel -->
+<div class="glass-panel w-full max-w-sm rounded-2xl p-6 mt-8 relative">
+<div class="grid grid-cols-2 gap-x-8 gap-y-6 relative">
+<!-- Inner Divider -->
+<div class="absolute left-1/2 top-2 bottom-2 w-px bg-outline-variant/40 -translate-x-1/2"></div>
+<!-- Measurement Item -->
+<div class="flex flex-col items-center text-center">
+<span class="font-label-md text-label-md text-on-surface-variant mb-1 uppercase">Shoulder</span>
+<span class="font-headline-md text-headline-md text-on-surface">48<span class="text-body-md text-on-surface-variant ml-0.5">cm</span></span>
+</div>
+<!-- Measurement Item -->
+<div class="flex flex-col items-center text-center">
+<span class="font-label-md text-label-md text-on-surface-variant mb-1 uppercase">Chest</span>
+<span class="font-headline-md text-headline-md text-on-surface">98<span class="text-body-md text-on-surface-variant ml-0.5">cm</span></span>
+</div>
+<!-- Measurement Item -->
+<div class="flex flex-col items-center text-center">
+<span class="font-label-md text-label-md text-on-surface-variant mb-1 uppercase">Waist</span>
+<span class="font-headline-md text-headline-md text-on-surface">82<span class="text-body-md text-on-surface-variant ml-0.5">cm</span></span>
+</div>
+<!-- Measurement Item -->
+<div class="flex flex-col items-center text-center">
+<span class="font-label-md text-label-md text-on-surface-variant mb-1 uppercase">Inseam</span>
+<span class="font-headline-md text-headline-md text-on-surface">84<span class="text-body-md text-on-surface-variant ml-0.5">cm</span></span>
+</div>
+</div>
+</div>
+<!-- Primary Action -->
+<div class="w-full max-w-sm mt-8 mb-4">
+<button class="w-full bg-secondary-container text-on-secondary-fixed font-body-lg py-4 rounded-full flex justify-center items-center gap-2 hover:opacity-90 transition-opacity focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background shadow-sm">
+<span>Save Measurements</span>
+<span class="material-symbols-outlined text-[20px]" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+</button>
+</div>
+</main>
+</body></html>
