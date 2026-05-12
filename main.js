@@ -11,7 +11,88 @@ const loadingOverlay = document.getElementById("loading-overlay");
 const statusBadge = document.getElementById("status-badge");
 const statusIndicatorText = document.getElementById("status-indicator-text");
 const retakeBtn = document.getElementById("retake-btn");
+const langToggle = document.getElementById("lang-toggle");
 const bottomSheet = document.getElementById("bottom-sheet");
+
+const i18n = {
+    en: {
+        heightPlaceholder: "175",
+        heightLabel: "Height:",
+        heightUnit: "cm",
+        preparing: "Preparing...",
+        stepBack: "Step back into the frame.",
+        standBack: "Stand back so your whole body is visible,<br/>and extend your arms straight to the sides.",
+        perfectHold: (timeLeft) => `Perfect.<br/>Hold still... ${timeLeft}`,
+        scanComplete: "Scan Complete",
+        scanning: "SCANNING",
+        ready: "READY",
+        captured: "CAPTURED",
+        shoulder: "Shoulder",
+        chest: "Chest",
+        waist: "Waist",
+        inseam: "Inseam",
+        armLength: "Arm Length",
+        saveMeasurements: "Save Measurements",
+        retakeScan: "Retake Scan",
+        loading: "Loading Model...",
+        errorLoading: "Error loading model",
+        enterHeight: "Please enter your height above to begin."
+    },
+    he: {
+        heightPlaceholder: "175",
+        heightLabel: 'גובה:',
+        heightUnit: 'ס"מ',
+        preparing: "מתכונן...",
+        stepBack: "אנא חזור אחורה למסגרת.",
+        standBack: "עמוד לאחור כך שכל גופך יכנס למסגרת,<br/>ופרוס את זרועותיך לצדדים.",
+        perfectHold: (timeLeft) => `מושלם.<br/>הישאר ללא תזוזה... ${timeLeft}`,
+        scanComplete: "הסריקה הושלמה",
+        scanning: "סורק",
+        ready: "מוכן",
+        captured: "נקלט",
+        shoulder: "כתפיים",
+        chest: "חזה",
+        waist: "מותניים",
+        inseam: "אורך רגל",
+        armLength: "אורך זרוע",
+        saveMeasurements: "שמור מידות",
+        retakeScan: "סרוק מחדש",
+        loading: "טוען מודל...",
+        errorLoading: "שגיאה בטעינת המודל",
+        enterHeight: "אנא הזן את הגובה שלך כדי להתחיל."
+    }
+};
+
+let currentLang = "he";
+
+const setLanguage = (lang) => {
+    currentLang = lang;
+    const t = i18n[lang];
+    document.body.dir = lang === "he" ? "rtl" : "ltr";
+
+    document.getElementById("user-height").placeholder = t.heightPlaceholder;
+    document.getElementById("lbl-height").textContent = t.heightLabel;
+    document.getElementById("lbl-cm").textContent = t.heightUnit;
+    document.querySelectorAll(".lbl-res-cm").forEach(el => el.textContent = t.heightUnit);
+    document.getElementById("lbl-shoulder").textContent = t.shoulder;
+    document.getElementById("lbl-chest").textContent = t.chest;
+    document.getElementById("lbl-waist").textContent = t.waist;
+    document.getElementById("lbl-inseam").textContent = t.inseam;
+    document.getElementById("lbl-arm").textContent = t.armLength;
+    document.getElementById("btn-save-text").textContent = t.saveMeasurements;
+    document.getElementById("btn-retake-text").textContent = t.retakeScan;
+    document.getElementById("loading-text").textContent = t.loading;
+
+    if (!webcamRunning && !hasCaptured && instructionHeader.textContent !== t.errorLoading) {
+        instructionHeader.textContent = t.preparing;
+    }
+
+    langToggle.textContent = lang === "he" ? "🇺🇸 EN" : "🇮🇱 עב";
+};
+
+langToggle.addEventListener("click", () => {
+    setLanguage(currentLang === "en" ? "he" : "en");
+});
 const viewfinderWrapper = document.getElementById("viewfinder-wrapper");
 const flashOverlay = document.getElementById("flash-overlay");
 const instructionHeader = document.getElementById("instruction-header");
@@ -49,12 +130,13 @@ const initializeMediaPipe = async () => {
             minPoseDetectionConfidence: 0.5,
             minPosePresenceConfidence: 0.5,
             minTrackingConfidence: 0.5,
+            outputSegmentationMasks: true,
         });
         loadingOverlay.classList.add("fade-out");
         enableCamera();
     } catch (error) {
         console.error("Error initializing MediaPipe:", error);
-        instructionHeader.textContent = "Error loading model";
+        instructionHeader.textContent = i18n[currentLang].errorLoading;
     }
 };
 
@@ -147,7 +229,7 @@ const calculateMeasurements = (landmarks) => {
         y: (landmarks[27].y + landmarks[28].y) / 2
     };
     const inseamPixels = calculateDistance(crotch, avgAnkle, vWidth, vHeight);
-    
+
     const leftArmPixels = calculateDistance(landmarks[11], landmarks[15], vWidth, vHeight);
     const rightArmPixels = calculateDistance(landmarks[12], landmarks[16], vWidth, vHeight);
     const armPixels = (leftArmPixels + rightArmPixels) / 2;
@@ -181,7 +263,7 @@ const predictWebcam = async () => {
             }
 
             if (!isHeightValid) {
-                instructionHeader.textContent = "Please enter your height above to begin.";
+                instructionHeader.textContent = i18n[currentLang].enterHeight;
                 statusBadge.style.opacity = "0";
                 canvasCtx.restore();
                 return;
@@ -191,9 +273,9 @@ const predictWebcam = async () => {
                 statusBadge.classList.remove("badge-gold");
                 viewfinderWrapper.classList.remove("aura-glow", "border-scan-white-pulse", "border-scan-green");
                 viewfinderWrapper.classList.add("border-scan-red");
-                instructionHeader.textContent = "Step back into the frame.";
+                instructionHeader.textContent = i18n[currentLang].stepBack;
                 statusBadge.style.opacity = "1";
-                statusIndicatorText.textContent = "SCANNING";
+                statusIndicatorText.textContent = i18n[currentLang].scanning;
                 countdownStartTime = null;
             } else {
                 const landmarks = result.landmarks[0];
@@ -208,43 +290,84 @@ const predictWebcam = async () => {
                     const timeLeft = Math.ceil((COUNTDOWN_DURATION_MS - timeElapsed) / 1000);
 
                     if (timeLeft > 0) {
-                        instructionHeader.innerHTML = `Perfect.<br/>Hold still... ${timeLeft}`;
+                        instructionHeader.innerHTML = i18n[currentLang].perfectHold(timeLeft);
                         statusBadge.classList.add("badge-gold");
                         viewfinderWrapper.classList.remove("aura-glow", "border-scan-red", "border-scan-green");
                         viewfinderWrapper.classList.add("border-scan-white-pulse");
-                        statusIndicatorText.textContent = "READY";
+                        statusIndicatorText.textContent = i18n[currentLang].ready;
                     } else {
-                        instructionHeader.textContent = "Scan Complete";
+                        instructionHeader.textContent = i18n[currentLang].scanComplete;
                         statusBadge.classList.remove("badge-gold");
                         viewfinderWrapper.classList.remove("aura-glow", "border-scan-red", "border-scan-white-pulse");
                         viewfinderWrapper.classList.add("border-scan-green");
-                        statusIndicatorText.textContent = "CAPTURED";
-                        
+                        statusIndicatorText.textContent = i18n[currentLang].captured;
+
                         // Flash animation and background darken
                         flashOverlay.classList.add("flash-active");
                         setTimeout(() => flashOverlay.classList.remove("flash-active"), 150);
                         document.body.classList.add("bg-darken");
-                        
+
                         calculateMeasurements(landmarks);
                         hasCaptured = true;
                         video.pause();
                         webcamRunning = false;
-                        
+
                         setTimeout(() => {
                             viewfinderWrapper.style.display = "none";
                             if (video.srcObject) {
                                 video.srcObject.getTracks().forEach(track => track.stop());
                             }
-                            
+
                             // Show bottom sheet
                             bottomSheet.classList.remove("translate-y-[150%]", "translate-y-[200%]");
                             bottomSheet.classList.add("translate-y-0");
-                            
+
                             document.body.classList.add("scroll-enabled");
                         }, 1000);
-                        
+
                         // Solid skeleton line for captured state
                         canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+
+                        if (result.segmentationMasks && result.segmentationMasks.length > 0) {
+                            const mask = result.segmentationMasks[0];
+                            const width = mask.width;
+                            const height = mask.height;
+                            let data;
+                            if (mask.getAsFloat32Array) {
+                                data = mask.getAsFloat32Array();
+                            } else if (mask.getAsUint8Array) {
+                                data = mask.getAsUint8Array();
+                            }
+
+                            if (data) {
+                                if (!window.maskCanvas) {
+                                    window.maskCanvas = document.createElement("canvas");
+                                    window.maskCtx = window.maskCanvas.getContext("2d");
+                                    window.maskImageData = window.maskCtx.createImageData(width, height);
+                                }
+                                if (window.maskCanvas.width !== width) {
+                                    window.maskCanvas.width = width;
+                                    window.maskCanvas.height = height;
+                                    window.maskImageData = window.maskCtx.createImageData(width, height);
+                                }
+
+                                const imgData = window.maskImageData.data;
+                                const isFloat = !!mask.getAsFloat32Array;
+                                for (let i = 0; i < data.length; ++i) {
+                                    const val = isFloat ? data[i] * 255 : data[i];
+                                    imgData[i * 4 + 3] = val;
+                                }
+                                window.maskCtx.putImageData(window.maskImageData, 0, 0);
+
+                                canvasCtx.save();
+                                canvasCtx.drawImage(window.maskCanvas, 0, 0, canvasElement.width, canvasElement.height);
+                                canvasCtx.globalCompositeOperation = "source-in";
+                                canvasCtx.fillStyle = "rgba(150, 150, 150, 0.3)";
+                                canvasCtx.fillRect(0, 0, canvasElement.width, canvasElement.height);
+                                canvasCtx.restore();
+                            }
+                        }
+
                         const drawingUtils = new DrawingUtils(canvasCtx);
                         drawingUtils.drawConnectors(landmarks, PoseLandmarker.POSE_CONNECTIONS, {
                             color: COLOR_SKELETON,
@@ -261,24 +384,24 @@ const predictWebcam = async () => {
                         tempCanvas.height = video.videoHeight;
                         const tempCtx = tempCanvas.getContext("2d");
                         tempCtx.drawImage(video, 0, 0, tempCanvas.width, tempCanvas.height);
-                        
+
                         const dataUrl = tempCanvas.toDataURL("image/jpeg", 0.9);
-                        
+
                         fetch('/save-frame', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({ image: dataUrl })
                         })
-                        .then(response => response.json())
-                        .then(data => {
-                            if (data.status === 'success') {
-                                console.log('Frame saved to server:', data.filename);
-                            } else {
-                                console.error('Error saving frame:', data.message);
-                            }
-                        })
-                        .catch(err => console.error('Fetch error:', err));
-                        
+                            .then(response => response.json())
+                            .then(data => {
+                                if (data.status === 'success') {
+                                    console.log('Frame saved to server:', data.filename);
+                                } else {
+                                    console.error('Error saving frame:', data.message);
+                                }
+                            })
+                            .catch(err => console.error('Fetch error:', err));
+
                         canvasCtx.restore();
                         return; // exit the loop
                     }
@@ -287,13 +410,53 @@ const predictWebcam = async () => {
                     statusBadge.classList.remove("badge-gold");
                     viewfinderWrapper.classList.remove("aura-glow", "border-scan-white-pulse", "border-scan-green");
                     viewfinderWrapper.classList.add("border-scan-red");
-                    instructionHeader.innerHTML = "Stand back so your whole body is visible,<br/>and extend your arms straight to the sides.";
+                    instructionHeader.innerHTML = i18n[currentLang].standBack;
                     statusBadge.style.opacity = "1";
-                    statusIndicatorText.textContent = "SCANNING";
+                    statusIndicatorText.textContent = i18n[currentLang].scanning;
                 }
 
                 // Normal scanning skeleton
                 if (!hasCaptured) {
+                    if (result.segmentationMasks && result.segmentationMasks.length > 0) {
+                        const mask = result.segmentationMasks[0];
+                        const width = mask.width;
+                        const height = mask.height;
+                        let data;
+                        if (mask.getAsFloat32Array) {
+                            data = mask.getAsFloat32Array();
+                        } else if (mask.getAsUint8Array) {
+                            data = mask.getAsUint8Array();
+                        }
+
+                        if (data) {
+                            if (!window.maskCanvas) {
+                                window.maskCanvas = document.createElement("canvas");
+                                window.maskCtx = window.maskCanvas.getContext("2d");
+                                window.maskImageData = window.maskCtx.createImageData(width, height);
+                            }
+                            if (window.maskCanvas.width !== width) {
+                                window.maskCanvas.width = width;
+                                window.maskCanvas.height = height;
+                                window.maskImageData = window.maskCtx.createImageData(width, height);
+                            }
+
+                            const imgData = window.maskImageData.data;
+                            const isFloat = !!mask.getAsFloat32Array;
+                            for (let i = 0; i < data.length; ++i) {
+                                const val = isFloat ? data[i] * 255 : data[i];
+                                imgData[i * 4 + 3] = val; // set alpha
+                            }
+                            window.maskCtx.putImageData(window.maskImageData, 0, 0);
+
+                            canvasCtx.save();
+                            canvasCtx.drawImage(window.maskCanvas, 0, 0, canvasElement.width, canvasElement.height);
+                            canvasCtx.globalCompositeOperation = "source-in";
+                            canvasCtx.fillStyle = "rgba(150, 150, 150, 0.3)";
+                            canvasCtx.fillRect(0, 0, canvasElement.width, canvasElement.height);
+                            canvasCtx.restore();
+                        }
+                    }
+
                     const drawingUtils = new DrawingUtils(canvasCtx);
                     drawingUtils.drawConnectors(landmarks, PoseLandmarker.POSE_CONNECTIONS, {
                         color: COLOR_SKELETON,
@@ -319,7 +482,7 @@ retakeBtn.addEventListener("click", () => {
     hasCaptured = false;
     isReadyToScan = false;
     countdownStartTime = null;
-    
+
     // Hide bottom sheet and reset states
     bottomSheet.classList.remove("translate-y-0");
     bottomSheet.classList.add("translate-y-[200%]");
@@ -327,20 +490,21 @@ retakeBtn.addEventListener("click", () => {
     viewfinderWrapper.style.display = "";
     viewfinderWrapper.classList.remove("aura-glow", "border-scan-green", "border-scan-white-pulse", "border-scan-red");
     statusBadge.classList.remove("badge-gold");
-    
+
     document.body.classList.remove("scroll-enabled");
-    
+
     resShoulders.textContent = "--";
     resChest.textContent = "--";
     resWaist.textContent = "--";
     resInseam.textContent = "--";
     resArm.textContent = "--";
-    
-    instructionHeader.textContent = "Preparing...";
+
+    instructionHeader.textContent = i18n[currentLang].preparing;
     statusBadge.style.opacity = "1";
-    statusIndicatorText.textContent = "SCANNING";
+    statusIndicatorText.textContent = i18n[currentLang].scanning;
 
     enableCamera();
 });
 
+setLanguage("he"); // default
 initializeMediaPipe();

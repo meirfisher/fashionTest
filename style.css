@@ -120,3 +120,13 @@ body.bg-darken {
 .font-couture {
     font-family: 'Playfair Display', serif;
 }
+
+/* Digital Grid Background */
+.scanner-grid {
+  background-color: #0a0a0a;
+  background-image: 
+    linear-gradient(rgba(57, 255, 20, 0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(57, 255, 20, 0.08) 1px, transparent 1px);
+  background-size: 20px 20px;
+  box-shadow: inset 0 0 60px rgba(0,0,0,0.8);
+}
