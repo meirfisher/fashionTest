@@ -130,7 +130,7 @@ const initializeMediaPipe = async () => {
             minPoseDetectionConfidence: 0.5,
             minPosePresenceConfidence: 0.5,
             minTrackingConfidence: 0.5,
-            outputSegmentationMasks: true,
+            outputSegmentationMasks: false,
         });
         loadingOverlay.classList.add("fade-out");
         enableCamera();
@@ -328,65 +328,14 @@ const predictWebcam = async () => {
                         // Solid skeleton line for captured state
                         canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
 
-                        if (result.segmentationMasks && result.segmentationMasks.length > 0) {
-                            try {
-                                canvasCtx.save();
-                                const mask = result.segmentationMasks[0];
-                                
-                                let maskImage = null;
-                                if (mask.getAsImageBitmap) {
-                                    maskImage = mask.getAsImageBitmap();
-                                } else if (mask.canvas) {
-                                    maskImage = mask.canvas;
-                                }
-
-                                if (maskImage) {
-                                    canvasCtx.drawImage(maskImage, 0, 0, canvasElement.width, canvasElement.height);
-                                    canvasCtx.globalCompositeOperation = 'source-in';
-                                    canvasCtx.fillStyle = 'rgba(150, 150, 150, 0.4)';
-                                    canvasCtx.fillRect(0, 0, canvasElement.width, canvasElement.height);
-                                } else {
-                                    const width = mask.width;
-                                    const height = mask.height;
-                                    let data;
-                                    if (mask.getAsFloat32Array) {
-                                        data = mask.getAsFloat32Array();
-                                    } else if (mask.getAsUint8Array) {
-                                        data = mask.getAsUint8Array();
-                                    }
-
-                                    if (data) {
-                                        if (!window.maskCanvas) {
-                                            window.maskCanvas = document.createElement("canvas");
-                                            window.maskCtx = window.maskCanvas.getContext("2d");
-                                            window.maskImageData = window.maskCtx.createImageData(width, height);
-                                        }
-                                        if (window.maskCanvas.width !== width) {
-                                            window.maskCanvas.width = width;
-                                            window.maskCanvas.height = height;
-                                            window.maskImageData = window.maskCtx.createImageData(width, height);
-                                        }
-
-                                        const imgData = window.maskImageData.data;
-                                        const isFloat = !!mask.getAsFloat32Array;
-                                        for (let i = 0; i < data.length; ++i) {
-                                            const val = isFloat ? data[i] * 255 : data[i];
-                                            imgData[i * 4 + 3] = val;
-                                        }
-                                        window.maskCtx.putImageData(window.maskImageData, 0, 0);
-
-                                        canvasCtx.drawImage(window.maskCanvas, 0, 0, canvasElement.width, canvasElement.height);
-                                        canvasCtx.globalCompositeOperation = 'source-in';
-                                        canvasCtx.fillStyle = 'rgba(150, 150, 150, 0.4)';
-                                        canvasCtx.fillRect(0, 0, canvasElement.width, canvasElement.height);
-                                    }
-                                }
-                                canvasCtx.restore();
-                            } catch (err) {
-                                console.error("Error drawing segmentation mask:", err);
-                                canvasCtx.restore();
-                            }
-                        }
+                        // Draw the video as an anonymous, futuristic shadow
+                        canvasCtx.save();
+                        // Apply heavy filters: blur destroys facial features, grayscale & contrast create a solid shape
+                        canvasCtx.filter = 'blur(12px) grayscale(100%) contrast(300%) brightness(50%)';
+                        // Make it semi-transparent so it blends with the CSS digital grid behind it
+                        canvasCtx.globalAlpha = 0.35; 
+                        canvasCtx.drawImage(video, 0, 0, canvasElement.width, canvasElement.height);
+                        canvasCtx.restore(); // Resets filters and alpha back to normal
 
                         const drawingUtils = new DrawingUtils(canvasCtx);
                         drawingUtils.drawConnectors(landmarks, PoseLandmarker.POSE_CONNECTIONS, {
@@ -437,65 +386,14 @@ const predictWebcam = async () => {
 
                 // Normal scanning skeleton
                 if (!hasCaptured) {
-                    if (result.segmentationMasks && result.segmentationMasks.length > 0) {
-                        try {
-                            canvasCtx.save();
-                            const mask = result.segmentationMasks[0];
-                            
-                            let maskImage = null;
-                            if (mask.getAsImageBitmap) {
-                                maskImage = mask.getAsImageBitmap();
-                            } else if (mask.canvas) {
-                                maskImage = mask.canvas;
-                            }
-
-                            if (maskImage) {
-                                canvasCtx.drawImage(maskImage, 0, 0, canvasElement.width, canvasElement.height);
-                                canvasCtx.globalCompositeOperation = 'source-in';
-                                canvasCtx.fillStyle = 'rgba(150, 150, 150, 0.4)';
-                                canvasCtx.fillRect(0, 0, canvasElement.width, canvasElement.height);
-                            } else {
-                                const width = mask.width;
-                                const height = mask.height;
-                                let data;
-                                if (mask.getAsFloat32Array) {
-                                    data = mask.getAsFloat32Array();
-                                } else if (mask.getAsUint8Array) {
-                                    data = mask.getAsUint8Array();
-                                }
-
-                                if (data) {
-                                    if (!window.maskCanvas) {
-                                        window.maskCanvas = document.createElement("canvas");
-                                        window.maskCtx = window.maskCanvas.getContext("2d");
-                                        window.maskImageData = window.maskCtx.createImageData(width, height);
-                                    }
-                                    if (window.maskCanvas.width !== width) {
-                                        window.maskCanvas.width = width;
-                                        window.maskCanvas.height = height;
-                                        window.maskImageData = window.maskCtx.createImageData(width, height);
-                                    }
-
-                                    const imgData = window.maskImageData.data;
-                                    const isFloat = !!mask.getAsFloat32Array;
-                                    for (let i = 0; i < data.length; ++i) {
-                                        const val = isFloat ? data[i] * 255 : data[i];
-                                        imgData[i * 4 + 3] = val; // set alpha
-                                    }
-                                    window.maskCtx.putImageData(window.maskImageData, 0, 0);
-
-                                    canvasCtx.drawImage(window.maskCanvas, 0, 0, canvasElement.width, canvasElement.height);
-                                    canvasCtx.globalCompositeOperation = 'source-in';
-                                    canvasCtx.fillStyle = 'rgba(150, 150, 150, 0.4)';
-                                    canvasCtx.fillRect(0, 0, canvasElement.width, canvasElement.height);
-                                }
-                            }
-                            canvasCtx.restore();
-                        } catch (err) {
-                            console.error("Error drawing segmentation mask:", err);
-                            canvasCtx.restore();
-                        }
-                    }
+                    // Draw the video as an anonymous, futuristic shadow
+                    canvasCtx.save();
+                    // Apply heavy filters: blur destroys facial features, grayscale & contrast create a solid shape
+                    canvasCtx.filter = 'blur(12px) grayscale(100%) contrast(300%) brightness(50%)';
+                    // Make it semi-transparent so it blends with the CSS digital grid behind it
+                    canvasCtx.globalAlpha = 0.35; 
+                    canvasCtx.drawImage(video, 0, 0, canvasElement.width, canvasElement.height);
+                    canvasCtx.restore(); // Resets filters and alpha back to normal
 
                     const drawingUtils = new DrawingUtils(canvasCtx);
                     drawingUtils.drawConnectors(landmarks, PoseLandmarker.POSE_CONNECTIONS, {
