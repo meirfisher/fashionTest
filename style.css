@@ -97,23 +97,29 @@ body.bg-darken {
 
 /* Dynamic Viewfinder Glows */
 .border-scan-red {
-    border: 1px solid #ff4444 !important;
+    outline: 2px solid #ff4444 !important;
+    outline-offset: -2px !important;
     box-shadow: 0 0 8px rgba(255, 68, 68, 0.4) !important;
+    border-color: transparent !important;
 }
 
 @keyframes pulse-white {
-    0%, 100% { border-color: rgba(255, 255, 255, 0.3); box-shadow: 0 0 4px rgba(255, 255, 255, 0.1); }
-    50% { border-color: rgba(255, 255, 255, 1); box-shadow: 0 0 12px rgba(255, 255, 255, 0.6); }
+    0%, 100% { outline-color: rgba(255, 255, 255, 0.3); box-shadow: 0 0 4px rgba(255, 255, 255, 0.1); }
+    50% { outline-color: rgba(255, 255, 255, 1); box-shadow: 0 0 12px rgba(255, 255, 255, 0.6); }
 }
 
 .border-scan-white-pulse {
-    border: 1px solid white !important;
+    outline: 2px solid white !important;
+    outline-offset: -2px !important;
     animation: pulse-white 1s infinite !important;
+    border-color: transparent !important;
 }
 
 .border-scan-green {
-    border: 1px solid #39FF14 !important;
+    outline: 2px solid #39FF14 !important;
+    outline-offset: -2px !important;
     box-shadow: 0 0 12px rgba(57, 255, 20, 0.6) !important;
+    border-color: transparent !important;
 }
 
 /* Branding Typography */
