@@ -135,13 +135,9 @@
             <button id="lang-toggle" class="text-on-surface-variant font-couture font-medium text-sm tracking-wider opacity-60 hover:opacity-100 transition-opacity">🇺🇸 EN</button>
         </div>
 
-        <!-- Instruction Header & Height Input -->
+        <!-- Height Input -->
         <div class="flex flex-col items-center w-full max-w-md mb-6">
-            <h2 id="instruction-header" class="font-headline-lg-mobile md:font-headline-lg text-headline-lg-mobile md:text-headline-lg text-on-surface tracking-tight leading-tight text-center h-24 flex items-center justify-center mb-4">
-                Preparing...
-            </h2>
-            
-            <div class="flex items-center justify-center border-b border-outline-variant/50 pb-1 mt-2">
+            <div class="flex items-center justify-center border-b border-outline-variant/50 pb-1">
                 <span id="lbl-height" class="text-on-surface-variant font-label-md uppercase tracking-widest text-xs mx-2">Height:</span>
                 <input type="number" id="user-height" placeholder="175" class="bg-transparent border-0 focus:ring-0 text-on-surface font-headline-md text-center text-lg w-16 p-0 placeholder-tertiary transition-colors outline-none shadow-none" style="background: transparent;" dir="ltr">
                 <span id="lbl-cm" class="text-on-surface-variant font-label-md uppercase tracking-widest text-xs mx-1">cm</span>
@@ -152,6 +148,13 @@
         <div class="relative w-full max-w-[280px] aspect-[9/16] rounded-[3rem] overflow-hidden border border-outline-variant/30 shadow-lg flex-shrink-0 scanner-grid z-10 transition-transform duration-500 ease-out" id="viewfinder-wrapper">
             <video id="webcam" class="absolute inset-0 w-full h-full object-cover object-center opacity-0 pointer-events-none" autoplay playsinline muted></video>
             <canvas id="output_canvas" class="absolute inset-0 w-full h-full object-cover object-center pointer-events-none z-10"></canvas>
+            
+            <!-- HUD Instruction Overlay -->
+            <div class="absolute top-16 left-1/2 -translate-x-1/2 z-50 w-11/12 flex justify-center pointer-events-none">
+                <h2 id="instruction-header" class="text-center bg-black/40 backdrop-blur-md text-white px-4 py-3 rounded-2xl border border-white/10 shadow-lg font-body-md text-sm leading-snug transition-all">
+                    Preparing...
+                </h2>
+            </div>
             
             <!-- Status Indicator -->
             <div id="status-badge" class="absolute top-6 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-surface/80 backdrop-blur-md px-3 py-1.5 rounded-full border border-outline-variant/30 shadow-sm transition-opacity duration-300 z-20">
