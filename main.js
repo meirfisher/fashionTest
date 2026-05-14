@@ -175,13 +175,32 @@ const enableCamera = async () => {
 
 const checkReadyToScan = (landmarks) => {
     if (scanPhase === 'SIDE') {
-        const isLeftSideVisible = (landmarks[11] && landmarks[11].visibility > 0.6) && 
-                                  (landmarks[23] && landmarks[23].visibility > 0.6) && 
-                                  (landmarks[27] && landmarks[27].visibility > 0.6);
-        const isRightSideVisible = (landmarks[12] && landmarks[12].visibility > 0.6) && 
-                                   (landmarks[24] && landmarks[24].visibility > 0.6) && 
-                                   (landmarks[28] && landmarks[28].visibility > 0.6);
-        return isLeftSideVisible || isRightSideVisible;
+        const isLeftSideVisible = (landmarks[11] && landmarks[11].visibility > 0.5) && 
+                                  (landmarks[23] && landmarks[23].visibility > 0.5) && 
+                                  (landmarks[25] && landmarks[25].visibility > 0.5) &&
+                                  (landmarks[27] && landmarks[27].visibility > 0.5);
+        const isRightSideVisible = (landmarks[12] && landmarks[12].visibility > 0.5) && 
+                                   (landmarks[24] && landmarks[24].visibility > 0.5) && 
+                                   (landmarks[26] && landmarks[26].visibility > 0.5) &&
+                                   (landmarks[28] && landmarks[28].visibility > 0.5);
+                                   
+        if (!isLeftSideVisible && !isRightSideVisible) return false;
+
+        const leftShoulder = landmarks[11];
+        const rightShoulder = landmarks[12];
+        const leftHip = landmarks[23];
+        const rightHip = landmarks[24];
+        const leftKnee = landmarks[25];
+        const rightKnee = landmarks[26];
+
+        const shoulderOverlap = Math.abs(leftShoulder.x - rightShoulder.x) < 0.15;
+        const hipOverlap = Math.abs(leftHip.x - rightHip.x) < 0.15;
+        const kneeOverlap = Math.abs(leftKnee.x - rightKnee.x) < 0.15;
+
+        // Require all three major body joints to overlap horizontally
+        const isTorsoSideways = shoulderOverlap && hipOverlap && kneeOverlap;
+
+        return isTorsoSideways;
     }
 
     // 11: left shoulder, 12: right shoulder
