@@ -70,32 +70,63 @@ const i18n = {
 let currentLang = "he";
 
 const setLanguage = (lang) => {
-    currentLang = lang;
-    const t = i18n[lang];
-    document.body.dir = lang === "he" ? "rtl" : "ltr";
+    try {
+        currentLang = lang;
+        const t = i18n[lang];
+        if (!t) return;
+        
+        document.body.dir = lang === "he" ? "rtl" : "ltr";
 
-    document.getElementById("user-height").placeholder = t.heightPlaceholder;
-    document.getElementById("lbl-height").textContent = t.heightLabel;
-    document.getElementById("lbl-cm").textContent = t.heightUnit;
-    document.querySelectorAll(".lbl-res-cm").forEach(el => el.textContent = t.heightUnit);
-    document.getElementById("lbl-shoulder").textContent = t.shoulder;
-    document.getElementById("lbl-chest").textContent = t.chest;
-    document.getElementById("lbl-waist").textContent = t.waist;
-    document.getElementById("lbl-inseam").textContent = t.inseam;
-    document.getElementById("lbl-arm").textContent = t.armLength;
-    document.getElementById("btn-save-text").textContent = t.saveMeasurements;
-    document.getElementById("btn-retake-text").textContent = t.retakeScan;
-    document.getElementById("loading-text").textContent = t.loading;
+        const updateText = (id, text) => {
+            const el = document.getElementById(id);
+            if (el) el.textContent = text;
+        };
 
-    if (!webcamRunning && !hasCaptured && instructionHeader.textContent !== t.errorLoading) {
-        instructionHeader.textContent = t.preparing;
+        const updatePlaceholder = (id, text) => {
+            const el = document.getElementById(id);
+            if (el) el.placeholder = text;
+        };
+
+        updatePlaceholder("user-height", t.heightPlaceholder);
+        updateText("lbl-height", t.heightLabel);
+        updateText("lbl-cm", t.heightUnit);
+        
+        const resCmEls = document.querySelectorAll(".lbl-res-cm");
+        if (resCmEls) {
+            resCmEls.forEach(el => el.textContent = t.heightUnit);
+        }
+        
+        updateText("lbl-shoulder", t.shoulder);
+        updateText("lbl-chest", t.chest);
+        updateText("lbl-waist", t.waist);
+        updateText("lbl-inseam", t.inseam);
+        updateText("lbl-arm", t.armLength);
+        updateText("btn-save-text", t.saveMeasurements);
+        updateText("btn-retake-text", t.retakeScan);
+        updateText("loading-text", t.loading);
+
+        if (typeof instructionHeader !== 'undefined' && instructionHeader) {
+            if (typeof webcamRunning !== 'undefined' && !webcamRunning && 
+                typeof hasCaptured !== 'undefined' && !hasCaptured && 
+                instructionHeader.textContent !== t.errorLoading) {
+                instructionHeader.textContent = t.preparing;
+            }
+        }
+
+        if (typeof langToggle !== 'undefined' && langToggle) {
+            langToggle.textContent = lang === "he" ? "🇺🇸 EN" : "🇮🇱 עב";
+        }
+    } catch (error) {
+        console.error("Error setting language:", error);
     }
-
-    langToggle.textContent = lang === "he" ? "🇺🇸 EN" : "🇮🇱 עב";
 };
 
-langToggle.addEventListener("click", () => {
-    setLanguage(currentLang === "en" ? "he" : "en");
+document.addEventListener("DOMContentLoaded", () => {
+    if (typeof langToggle !== 'undefined' && langToggle) {
+        langToggle.addEventListener("click", () => {
+            setLanguage(currentLang === "en" ? "he" : "en");
+        });
+    }
 });
 const viewfinderWrapper = document.getElementById("viewfinder-wrapper");
 const flashOverlay = document.getElementById("flash-overlay");
@@ -177,11 +208,9 @@ const checkReadyToScan = (landmarks) => {
     if (scanPhase === 'SIDE') {
         const isLeftSideVisible = (landmarks[11] && landmarks[11].visibility > 0.5) && 
                                   (landmarks[23] && landmarks[23].visibility > 0.5) && 
-                                  (landmarks[25] && landmarks[25].visibility > 0.5) &&
                                   (landmarks[27] && landmarks[27].visibility > 0.5);
         const isRightSideVisible = (landmarks[12] && landmarks[12].visibility > 0.5) && 
                                    (landmarks[24] && landmarks[24].visibility > 0.5) && 
-                                   (landmarks[26] && landmarks[26].visibility > 0.5) &&
                                    (landmarks[28] && landmarks[28].visibility > 0.5);
                                    
         if (!isLeftSideVisible && !isRightSideVisible) return false;
@@ -190,15 +219,12 @@ const checkReadyToScan = (landmarks) => {
         const rightShoulder = landmarks[12];
         const leftHip = landmarks[23];
         const rightHip = landmarks[24];
-        const leftKnee = landmarks[25];
-        const rightKnee = landmarks[26];
 
-        const shoulderOverlap = Math.abs(leftShoulder.x - rightShoulder.x) < 0.15;
-        const hipOverlap = Math.abs(leftHip.x - rightHip.x) < 0.15;
-        const kneeOverlap = Math.abs(leftKnee.x - rightKnee.x) < 0.15;
+        const shoulderOverlap = Math.abs(leftShoulder.x - rightShoulder.x) < 0.25;
+        const hipOverlap = Math.abs(leftHip.x - rightHip.x) < 0.25;
 
-        // Require all three major body joints to overlap horizontally
-        const isTorsoSideways = shoulderOverlap && hipOverlap && kneeOverlap;
+        // Require major upper body joints to overlap horizontally
+        const isTorsoSideways = shoulderOverlap && hipOverlap;
 
         return isTorsoSideways;
     }
