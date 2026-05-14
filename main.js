@@ -249,17 +249,12 @@ const checkReadyToScan = (landmarks) => {
         const leftShoulder = landmarks[11];
         const rightShoulder = landmarks[12];
 
-        // Very forgiving visibility check. As long as the AI has a rough guess of where shoulders are.
-        if (leftShoulder.visibility > 0.2 || rightShoulder.visibility > 0.2) {
-            // Simply check the horizontal distance between shoulders.
-            // When facing front, this is large. When turned sideways, they overlap.
-            const shoulderWidthX = Math.abs(leftShoulder.x - rightShoulder.x);
+        // Ignore visibility entirely, as MediaPipe reports 0.00 in strict profile.
+        // Rely solely on the spatial horizontal overlap.
+        const shoulderWidthX = Math.abs(leftShoulder.x - rightShoulder.x);
 
-            // 0.12 means the shoulders take up less than 12% of the screen width horizontally
-            // This is a reliable indicator of a profile pose regardless of depth/hips/knees.
-            if (shoulderWidthX < 0.12) {
-                return true;
-            }
+        if (shoulderWidthX < 0.12) {
+            return true;
         }
         return false;
     }
