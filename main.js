@@ -206,27 +206,32 @@ const enableCamera = async () => {
 
 const checkReadyToScan = (landmarks) => {
     if (scanPhase === 'SIDE') {
-        const isLeftSideVisible = (landmarks[11] && landmarks[11].visibility > 0.5) && 
-                                  (landmarks[23] && landmarks[23].visibility > 0.5) && 
-                                  (landmarks[27] && landmarks[27].visibility > 0.5);
-        const isRightSideVisible = (landmarks[12] && landmarks[12].visibility > 0.5) && 
-                                   (landmarks[24] && landmarks[24].visibility > 0.5) && 
-                                   (landmarks[28] && landmarks[28].visibility > 0.5);
-                                   
-        if (!isLeftSideVisible && !isRightSideVisible) return false;
-
         const leftShoulder = landmarks[11];
         const rightShoulder = landmarks[12];
         const leftHip = landmarks[23];
         const rightHip = landmarks[24];
 
-        const shoulderOverlap = Math.abs(leftShoulder.x - rightShoulder.x) < 0.25;
-        const hipOverlap = Math.abs(leftHip.x - rightHip.x) < 0.25;
+        // 1. Check if at least ONE side of the torso is visible
+        const isLeftVisible = leftShoulder.visibility > 0.5 && leftHip.visibility > 0.5;
+        const isRightVisible = rightShoulder.visibility > 0.5 && rightHip.visibility > 0.5;
 
-        // Require major upper body joints to overlap horizontally
-        const isTorsoSideways = shoulderOverlap && hipOverlap;
+        if (isLeftVisible || isRightVisible) {
+            // 2. Calculate the torso width on the X-axis
+            const shoulderWidthX = Math.abs(leftShoulder.x - rightShoulder.x);
+            const hipWidthX = Math.abs(leftHip.x - rightHip.x);
 
-        return isTorsoSideways;
+            // 3. Calculate the torso depth difference on the Z-axis
+            // Z represents distance from the camera. In a profile pose, one shoulder is much closer than the other.
+            const shoulderDepthZ = Math.abs(leftShoulder.z - rightShoulder.z);
+
+            // 4. Trigger condition: Torso is narrow in X (overlap) OR deep in Z
+            const isNarrowX = shoulderWidthX < 0.15 && hipWidthX < 0.15;
+            const isDeepZ = shoulderDepthZ > 0.15; 
+
+            return isNarrowX || isDeepZ;
+        }
+        
+        return false;
     }
 
     // 11: left shoulder, 12: right shoulder
