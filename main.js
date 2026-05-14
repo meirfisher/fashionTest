@@ -22,7 +22,9 @@ const i18n = {
         preparing: "Preparing...",
         stepBack: "Step back into the frame.",
         standBack: "Stand back so your whole body is visible,<br/>and extend your arms straight to the sides.",
+        standBackSide: "Make sure your whole body is visible from the side.",
         perfectHold: (timeLeft) => `Perfect.<br/>Hold still... ${timeLeft}`,
+        turnSide: "Perfect! Now turn 90° to the side.",
         scanComplete: "Scan Complete",
         scanning: "SCANNING",
         ready: "READY",
@@ -45,7 +47,9 @@ const i18n = {
         preparing: "מתכונן...",
         stepBack: "אנא חזור אחורה למסגרת.",
         standBack: "עמוד לאחור כך שכל גופך יכנס למסגרת,<br/>ופרוס את זרועותיך לצדדים.",
+        standBackSide: "וודא שכל גופך גלוי מהצד.",
         perfectHold: (timeLeft) => `מושלם.<br/>הישאר ללא תזוזה... ${timeLeft}`,
+        turnSide: "מצוין! עכשיו הסתובב/י 90 מעלות הצידה.",
         scanComplete: "הסריקה הושלמה",
         scanning: "סורק",
         ready: "מוכן",
@@ -112,6 +116,14 @@ let countdownStartTime = null;
 const COUNTDOWN_DURATION_MS = 3000;
 let hasCaptured = false;
 
+let scanPhase = 'FRONT';
+let frontWidthChest = 0;
+let frontWidthWaist = 0;
+let frontShoulderPixels = 0;
+let frontInseamPixels = 0;
+let frontArmPixels = 0;
+let ratio = 1;
+
 const COLOR_SKELETON = "#39FF14";
 
 // Create Pose Landmarker
@@ -162,6 +174,14 @@ const enableCamera = async () => {
 };
 
 const checkReadyToScan = (landmarks) => {
+    if (scanPhase === 'SIDE') {
+        const hasShoulder = (landmarks[11] && landmarks[11].visibility > 0.5) || (landmarks[12] && landmarks[12].visibility > 0.5);
+        const hasHip = (landmarks[23] && landmarks[23].visibility > 0.5) || (landmarks[24] && landmarks[24].visibility > 0.5);
+        const hasAnkle = (landmarks[27] && landmarks[27].visibility > 0.5) || (landmarks[28] && landmarks[28].visibility > 0.5);
+        
+        return hasShoulder && hasHip && hasAnkle;
+    }
+
     // 11: left shoulder, 12: right shoulder
     // 13: left elbow, 14: right elbow
     // 15: left wrist, 16: right wrist
@@ -195,7 +215,7 @@ const calculateDistance = (p1, p2, width, height) => {
     return Math.sqrt(dx * dx + dy * dy);
 };
 
-const calculateMeasurements = (landmarks) => {
+const captureFrontMeasurements = (landmarks) => {
     const actualHeightCm = parseFloat(heightInput.value) || 175;
     const vWidth = video.videoWidth;
     const vHeight = video.videoHeight;
@@ -208,17 +228,17 @@ const calculateMeasurements = (landmarks) => {
     const lowestAnkleY = Math.max(landmarks[27].y, landmarks[28].y) * vHeight;
 
     const detectedHeightPixels = lowestAnkleY - topOfHeadY;
-    if (detectedHeightPixels <= 0) return;
+    if (detectedHeightPixels > 0) {
+        ratio = actualHeightCm / detectedHeightPixels;
+    }
 
-    const ratio = actualHeightCm / detectedHeightPixels;
-
-    const shoulderPixels = calculateDistance(landmarks[11], landmarks[12], vWidth, vHeight);
+    frontShoulderPixels = calculateDistance(landmarks[11], landmarks[12], vWidth, vHeight);
 
     const lChest = { x: landmarks[11].x, y: landmarks[11].y + 0.05 };
     const rChest = { x: landmarks[12].x, y: landmarks[12].y + 0.05 };
-    const chestPixels = calculateDistance(lChest, rChest, vWidth, vHeight) * 2.5;
+    frontWidthChest = calculateDistance(lChest, rChest, vWidth, vHeight);
 
-    const waistPixels = calculateDistance(landmarks[23], landmarks[24], vWidth, vHeight) * 2.4;
+    frontWidthWaist = calculateDistance(landmarks[23], landmarks[24], vWidth, vHeight);
 
     const crotch = {
         x: (landmarks[23].x + landmarks[24].x) / 2,
@@ -228,17 +248,44 @@ const calculateMeasurements = (landmarks) => {
         x: (landmarks[27].x + landmarks[28].x) / 2,
         y: (landmarks[27].y + landmarks[28].y) / 2
     };
-    const inseamPixels = calculateDistance(crotch, avgAnkle, vWidth, vHeight);
+    frontInseamPixels = calculateDistance(crotch, avgAnkle, vWidth, vHeight);
 
     const leftArmPixels = calculateDistance(landmarks[11], landmarks[15], vWidth, vHeight);
     const rightArmPixels = calculateDistance(landmarks[12], landmarks[16], vWidth, vHeight);
-    const armPixels = (leftArmPixels + rightArmPixels) / 2;
+    frontArmPixels = (leftArmPixels + rightArmPixels) / 2;
+};
 
-    resShoulders.textContent = (shoulderPixels * ratio).toFixed(1);
-    resChest.textContent = (chestPixels * ratio).toFixed(1);
-    resWaist.textContent = (waistPixels * ratio).toFixed(1);
-    resInseam.textContent = (inseamPixels * ratio).toFixed(1);
-    resArm.textContent = (armPixels * ratio).toFixed(1);
+const calculateFinalMeasurements = (sideLandmarks) => {
+    const vWidth = video.videoWidth;
+    
+    // Depth from side scan
+    const torsoIndices = [11, 12, 23, 24]; // shoulders and hips
+    let minX = Math.min(...torsoIndices.map(i => sideLandmarks[i].x));
+    let maxX = Math.max(...torsoIndices.map(i => sideLandmarks[i].x));
+    
+    // Add a multiplier because landmarks are inside the body
+    let depthChestPixels = (maxX - minX) * vWidth * 2.0; 
+    let depthWaistPixels = depthChestPixels * 0.9;
+    
+    // Fallback if they are perfectly aligned
+    if (depthChestPixels < frontWidthChest * 0.3) {
+        depthChestPixels = frontWidthChest * 0.6;
+        depthWaistPixels = frontWidthWaist * 0.6;
+    }
+    
+    // Circumference = PI * sqrt(2 * ((Width/2)^2 + (Depth/2)^2))
+    const calculateEllipse = (width, depth) => {
+        return Math.PI * Math.sqrt(2 * (Math.pow(width / 2, 2) + Math.pow(depth / 2, 2)));
+    };
+    
+    const chestCircumferencePixels = calculateEllipse(frontWidthChest, depthChestPixels);
+    const waistCircumferencePixels = calculateEllipse(frontWidthWaist, depthWaistPixels);
+    
+    resShoulders.textContent = (frontShoulderPixels * ratio).toFixed(1);
+    resChest.textContent = (chestCircumferencePixels * ratio).toFixed(1);
+    resWaist.textContent = (waistCircumferencePixels * ratio).toFixed(1);
+    resInseam.textContent = (frontInseamPixels * ratio).toFixed(1);
+    resArm.textContent = (frontArmPixels * ratio).toFixed(1);
 };
 
 const predictWebcam = async () => {
@@ -296,6 +343,24 @@ const predictWebcam = async () => {
                         viewfinderWrapper.classList.add("border-scan-white-pulse");
                         statusIndicatorText.textContent = i18n[currentLang].ready;
                     } else {
+                        if (scanPhase === 'FRONT') {
+                            captureFrontMeasurements(landmarks);
+                            scanPhase = 'SIDE';
+                            countdownStartTime = null;
+                            isReadyToScan = false;
+                            
+                            instructionHeader.textContent = i18n[currentLang].turnSide;
+                            statusBadge.classList.remove("badge-gold");
+                            viewfinderWrapper.classList.remove("aura-glow", "border-scan-red", "border-scan-white-pulse", "border-scan-green");
+                            statusIndicatorText.textContent = i18n[currentLang].scanning;
+                            
+                            flashOverlay.classList.add("flash-active");
+                            setTimeout(() => flashOverlay.classList.remove("flash-active"), 150);
+                            
+                            canvasCtx.restore();
+                            return;
+                        }
+
                         instructionHeader.textContent = i18n[currentLang].scanComplete;
                         statusBadge.classList.remove("badge-gold");
                         viewfinderWrapper.classList.remove("aura-glow", "border-scan-red", "border-scan-white-pulse");
@@ -307,7 +372,7 @@ const predictWebcam = async () => {
                         setTimeout(() => flashOverlay.classList.remove("flash-active"), 150);
                         document.body.classList.add("bg-darken");
 
-                        calculateMeasurements(landmarks);
+                        calculateFinalMeasurements(landmarks);
                         hasCaptured = true;
                         video.pause();
                         webcamRunning = false;
@@ -379,7 +444,7 @@ const predictWebcam = async () => {
                     statusBadge.classList.remove("badge-gold");
                     viewfinderWrapper.classList.remove("aura-glow", "border-scan-white-pulse", "border-scan-green");
                     viewfinderWrapper.classList.add("border-scan-red");
-                    instructionHeader.innerHTML = i18n[currentLang].standBack;
+                    instructionHeader.innerHTML = scanPhase === 'FRONT' ? i18n[currentLang].standBack : i18n[currentLang].standBackSide;
                     statusBadge.style.opacity = "1";
                     statusIndicatorText.textContent = i18n[currentLang].scanning;
                 }
@@ -420,6 +485,7 @@ retakeBtn.addEventListener("click", () => {
     hasCaptured = false;
     isReadyToScan = false;
     countdownStartTime = null;
+    scanPhase = 'FRONT';
 
     // Hide bottom sheet and reset states
     bottomSheet.classList.remove("translate-y-0");
