@@ -24,7 +24,7 @@ const i18n = {
         standBack: "Stand back so your whole body is visible,<br/>and extend your arms straight to the sides.",
         standBackSide: "Make sure your whole body is visible from the side.",
         perfectHold: (timeLeft) => `Perfect.<br/>Hold still... ${timeLeft}`,
-        turnSide: "Perfect! Now turn 90° to the side.",
+        turnSide: "Turn 90°, look straight, and let arms hang slightly away from your body.",
         scanComplete: "Scan Complete",
         scanning: "SCANNING",
         ready: "READY",
@@ -49,7 +49,7 @@ const i18n = {
         standBack: "עמוד לאחור כך שכל גופך יכנס למסגרת,<br/>ופרוס את זרועותיך לצדדים.",
         standBackSide: "וודא שכל גופך גלוי מהצד.",
         perfectHold: (timeLeft) => `מושלם.<br/>הישאר ללא תזוזה... ${timeLeft}`,
-        turnSide: "מצוין! עכשיו הסתובב/י 90 מעלות הצידה.",
+        turnSide: "הסתובב/י 90 מעלות, מבט קדימה, וידיים רפויות מעט רחוקות מהגוף.",
         scanComplete: "הסריקה הושלמה",
         scanning: "סורק",
         ready: "מוכן",
@@ -175,11 +175,13 @@ const enableCamera = async () => {
 
 const checkReadyToScan = (landmarks) => {
     if (scanPhase === 'SIDE') {
-        const hasShoulder = (landmarks[11] && landmarks[11].visibility > 0.5) || (landmarks[12] && landmarks[12].visibility > 0.5);
-        const hasHip = (landmarks[23] && landmarks[23].visibility > 0.5) || (landmarks[24] && landmarks[24].visibility > 0.5);
-        const hasAnkle = (landmarks[27] && landmarks[27].visibility > 0.5) || (landmarks[28] && landmarks[28].visibility > 0.5);
-        
-        return hasShoulder && hasHip && hasAnkle;
+        const isLeftSideVisible = (landmarks[11] && landmarks[11].visibility > 0.6) && 
+                                  (landmarks[23] && landmarks[23].visibility > 0.6) && 
+                                  (landmarks[27] && landmarks[27].visibility > 0.6);
+        const isRightSideVisible = (landmarks[12] && landmarks[12].visibility > 0.6) && 
+                                   (landmarks[24] && landmarks[24].visibility > 0.6) && 
+                                   (landmarks[28] && landmarks[28].visibility > 0.6);
+        return isLeftSideVisible || isRightSideVisible;
     }
 
     // 11: left shoulder, 12: right shoulder
@@ -257,30 +259,30 @@ const captureFrontMeasurements = (landmarks) => {
 
 const calculateFinalMeasurements = (sideLandmarks) => {
     const vWidth = video.videoWidth;
-    
+
     // Depth from side scan
     const torsoIndices = [11, 12, 23, 24]; // shoulders and hips
     let minX = Math.min(...torsoIndices.map(i => sideLandmarks[i].x));
     let maxX = Math.max(...torsoIndices.map(i => sideLandmarks[i].x));
-    
+
     // Add a multiplier because landmarks are inside the body
-    let depthChestPixels = (maxX - minX) * vWidth * 2.0; 
+    let depthChestPixels = (maxX - minX) * vWidth * 2.0;
     let depthWaistPixels = depthChestPixels * 0.9;
-    
+
     // Fallback if they are perfectly aligned
     if (depthChestPixels < frontWidthChest * 0.3) {
         depthChestPixels = frontWidthChest * 0.6;
         depthWaistPixels = frontWidthWaist * 0.6;
     }
-    
+
     // Circumference = PI * sqrt(2 * ((Width/2)^2 + (Depth/2)^2))
     const calculateEllipse = (width, depth) => {
         return Math.PI * Math.sqrt(2 * (Math.pow(width / 2, 2) + Math.pow(depth / 2, 2)));
     };
-    
+
     const chestCircumferencePixels = calculateEllipse(frontWidthChest, depthChestPixels);
     const waistCircumferencePixels = calculateEllipse(frontWidthWaist, depthWaistPixels);
-    
+
     resShoulders.textContent = (frontShoulderPixels * ratio).toFixed(1);
     resChest.textContent = (chestCircumferencePixels * ratio).toFixed(1);
     resWaist.textContent = (waistCircumferencePixels * ratio).toFixed(1);
@@ -348,15 +350,15 @@ const predictWebcam = async () => {
                             scanPhase = 'SIDE';
                             countdownStartTime = null;
                             isReadyToScan = false;
-                            
+
                             instructionHeader.textContent = i18n[currentLang].turnSide;
                             statusBadge.classList.remove("badge-gold");
                             viewfinderWrapper.classList.remove("aura-glow", "border-scan-red", "border-scan-white-pulse", "border-scan-green");
                             statusIndicatorText.textContent = i18n[currentLang].scanning;
-                            
+
                             flashOverlay.classList.add("flash-active");
                             setTimeout(() => flashOverlay.classList.remove("flash-active"), 150);
-                            
+
                             canvasCtx.restore();
                             return;
                         }
@@ -398,7 +400,7 @@ const predictWebcam = async () => {
                         // Apply heavy filters: blur destroys facial features, grayscale & contrast create a solid shape
                         canvasCtx.filter = 'blur(12px) grayscale(100%) contrast(300%) brightness(50%)';
                         // Make it semi-transparent so it blends with the CSS digital grid behind it
-                        canvasCtx.globalAlpha = 0.35; 
+                        canvasCtx.globalAlpha = 0.35;
                         canvasCtx.drawImage(video, 0, 0, canvasElement.width, canvasElement.height);
                         canvasCtx.restore(); // Resets filters and alpha back to normal
 
@@ -444,7 +446,7 @@ const predictWebcam = async () => {
                     statusBadge.classList.remove("badge-gold");
                     viewfinderWrapper.classList.remove("aura-glow", "border-scan-white-pulse", "border-scan-green");
                     viewfinderWrapper.classList.add("border-scan-red");
-                    instructionHeader.innerHTML = scanPhase === 'FRONT' ? i18n[currentLang].standBack : i18n[currentLang].standBackSide;
+                    instructionHeader.innerHTML = scanPhase === 'FRONT' ? i18n[currentLang].standBack : i18n[currentLang].turnSide;
                     statusBadge.style.opacity = "1";
                     statusIndicatorText.textContent = i18n[currentLang].scanning;
                 }
@@ -456,7 +458,7 @@ const predictWebcam = async () => {
                     // Apply heavy filters: blur destroys facial features, grayscale & contrast create a solid shape
                     canvasCtx.filter = 'blur(12px) grayscale(100%) contrast(300%) brightness(50%)';
                     // Make it semi-transparent so it blends with the CSS digital grid behind it
-                    canvasCtx.globalAlpha = 0.35; 
+                    canvasCtx.globalAlpha = 0.35;
                     canvasCtx.drawImage(video, 0, 0, canvasElement.width, canvasElement.height);
                     canvasCtx.restore(); // Resets filters and alpha back to normal
 
