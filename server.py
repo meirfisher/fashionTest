@@ -70,12 +70,16 @@ class CustomHandler(http.server.SimpleHTTPRequestHandler):
                 data = json.loads(post_data.decode('utf-8'))
                 image_data = data.get('image')
                 
+                # Fetch the phase from the JSON to name the file accordingly
+                phase = data.get('phase', 'unknown')
+                
                 if image_data and image_data.startswith('data:image/jpeg;base64,'):
                     # Decode base64 image
                     base64_str = image_data.split(',')[1]
                     image_bytes = base64.b64decode(base64_str)
                     
-                    filename = f"fitscan_test_{int(time.time() * 1000)}.jpg"
+                    # File name will now be: fitscan_front_17154212.jpg or fitscan_side_17154215.jpg
+                    filename = f"fitscan_{phase}_{int(time.time() * 1000)}.jpg"
                     
                     # 1. Save locally as backup
                     filepath = os.path.join(QA_DIR, filename)

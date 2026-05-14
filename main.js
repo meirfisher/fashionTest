@@ -69,17 +69,18 @@ const i18n = {
 
 let currentLang = "he";
 
+// Fixed Language Toggle to prevent crashing on load
 const setLanguage = (lang) => {
     try {
         currentLang = lang;
         const t = i18n[lang];
         if (!t) return;
-        
+
         document.body.dir = lang === "he" ? "rtl" : "ltr";
 
         const updateText = (id, text) => {
             const el = document.getElementById(id);
-            if (el) el.textContent = text;
+            if (el) el.innerHTML = text; // Changed to innerHTML to support <br/>
         };
 
         const updatePlaceholder = (id, text) => {
@@ -90,12 +91,12 @@ const setLanguage = (lang) => {
         updatePlaceholder("user-height", t.heightPlaceholder);
         updateText("lbl-height", t.heightLabel);
         updateText("lbl-cm", t.heightUnit);
-        
+
         const resCmEls = document.querySelectorAll(".lbl-res-cm");
-        if (resCmEls) {
+        if (resCmEls && resCmEls.length > 0) {
             resCmEls.forEach(el => el.textContent = t.heightUnit);
         }
-        
+
         updateText("lbl-shoulder", t.shoulder);
         updateText("lbl-chest", t.chest);
         updateText("lbl-waist", t.waist);
@@ -106,10 +107,9 @@ const setLanguage = (lang) => {
         updateText("loading-text", t.loading);
 
         if (typeof instructionHeader !== 'undefined' && instructionHeader) {
-            if (typeof webcamRunning !== 'undefined' && !webcamRunning && 
-                typeof hasCaptured !== 'undefined' && !hasCaptured && 
-                instructionHeader.textContent !== t.errorLoading) {
-                instructionHeader.textContent = t.preparing;
+            // Only update if it's currently showing generic scanning text
+            if (instructionHeader.textContent === i18n['en'].preparing || instructionHeader.textContent === i18n['he'].preparing) {
+                instructionHeader.innerHTML = t.preparing;
             }
         }
 
@@ -128,6 +128,7 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 });
+
 const viewfinderWrapper = document.getElementById("viewfinder-wrapper");
 const flashOverlay = document.getElementById("flash-overlay");
 const instructionHeader = document.getElementById("instruction-header");
@@ -157,7 +158,6 @@ let ratio = 1;
 
 const COLOR_SKELETON = "#39FF14";
 
-// Create Pose Landmarker
 const initializeMediaPipe = async () => {
     try {
         const vision = await FilesetResolver.forVisionTasks(
@@ -189,7 +189,7 @@ const enableCamera = async () => {
     try {
         const constraints = {
             video: {
-                facingMode: "user",
+                facingMode: { ideal: "user" },
                 width: { ideal: 1280 },
                 height: { ideal: 720 }
             }
@@ -200,45 +200,71 @@ const enableCamera = async () => {
         video.addEventListener("loadeddata", predictWebcam);
         webcamRunning = true;
     } catch (error) {
-        console.error("Error accessing webcam:", error);
+        console.warn("First getUserMedia failed, trying fallback...", error);
+        try {
+            const fallbackConstraints = { video: true };
+            const fallbackStream = await navigator.mediaDevices.getUserMedia(fallbackConstraints);
+            video.srcObject = fallbackStream;
+            video.addEventListener("loadeddata", predictWebcam);
+            webcamRunning = true;
+        } catch (fallbackError) {
+            console.error("Error accessing webcam (even with fallback):", fallbackError);
+        }
     }
 };
 
+// HELPER: Send frame to server
+const sendFrameToServer = (phaseName) => {
+    try {
+        const tempCanvas = document.createElement("canvas");
+        tempCanvas.width = video.videoWidth;
+        tempCanvas.height = video.videoHeight;
+        const tempCtx = tempCanvas.getContext("2d");
+        tempCtx.drawImage(video, 0, 0, tempCanvas.width, tempCanvas.height);
+
+        const dataUrl = tempCanvas.toDataURL("image/jpeg", 0.9);
+
+        fetch('/save-frame', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ image: dataUrl, phase: phaseName })
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    console.log(`Frame [${phaseName}] saved to server:`, data.filename);
+                } else {
+                    console.error('Error saving frame:', data.message);
+                }
+            })
+            .catch(err => console.error('Fetch error:', err));
+    } catch (err) {
+        console.error('Error capturing frame for server:', err);
+    }
+};
+
+// THE REWRITTEN TRIGGER LOGIC
 const checkReadyToScan = (landmarks) => {
     if (scanPhase === 'SIDE') {
         const leftShoulder = landmarks[11];
         const rightShoulder = landmarks[12];
-        const leftHip = landmarks[23];
-        const rightHip = landmarks[24];
 
-        // 1. Check if at least ONE side of the torso is visible
-        const isLeftVisible = leftShoulder.visibility > 0.5 && leftHip.visibility > 0.5;
-        const isRightVisible = rightShoulder.visibility > 0.5 && rightHip.visibility > 0.5;
-
-        if (isLeftVisible || isRightVisible) {
-            // 2. Calculate the torso width on the X-axis
+        // Very forgiving visibility check. As long as the AI has a rough guess of where shoulders are.
+        if (leftShoulder.visibility > 0.2 || rightShoulder.visibility > 0.2) {
+            // Simply check the horizontal distance between shoulders.
+            // When facing front, this is large. When turned sideways, they overlap.
             const shoulderWidthX = Math.abs(leftShoulder.x - rightShoulder.x);
-            const hipWidthX = Math.abs(leftHip.x - rightHip.x);
 
-            // 3. Calculate the torso depth difference on the Z-axis
-            // Z represents distance from the camera. In a profile pose, one shoulder is much closer than the other.
-            const shoulderDepthZ = Math.abs(leftShoulder.z - rightShoulder.z);
-
-            // 4. Trigger condition: Torso is narrow in X (overlap) OR deep in Z
-            const isNarrowX = shoulderWidthX < 0.15 && hipWidthX < 0.15;
-            const isDeepZ = shoulderDepthZ > 0.15; 
-
-            return isNarrowX || isDeepZ;
+            // 0.12 means the shoulders take up less than 12% of the screen width horizontally
+            // This is a reliable indicator of a profile pose regardless of depth/hips/knees.
+            if (shoulderWidthX < 0.12) {
+                return true;
+            }
         }
-        
         return false;
     }
 
-    // 11: left shoulder, 12: right shoulder
-    // 13: left elbow, 14: right elbow
-    // 15: left wrist, 16: right wrist
-    // 27: left ankle, 28: right ankle
-
+    // FRONT PHASE VALIDATION
     const requiredIndices = [11, 12, 13, 14, 15, 16, 23, 24, 27, 28];
     for (let i of requiredIndices) {
         if (!landmarks[i] || landmarks[i].visibility < 0.6) {
@@ -310,22 +336,18 @@ const captureFrontMeasurements = (landmarks) => {
 const calculateFinalMeasurements = (sideLandmarks) => {
     const vWidth = video.videoWidth;
 
-    // Depth from side scan
-    const torsoIndices = [11, 12, 23, 24]; // shoulders and hips
+    const torsoIndices = [11, 12, 23, 24];
     let minX = Math.min(...torsoIndices.map(i => sideLandmarks[i].x));
     let maxX = Math.max(...torsoIndices.map(i => sideLandmarks[i].x));
 
-    // Add a multiplier because landmarks are inside the body
     let depthChestPixels = (maxX - minX) * vWidth * 2.0;
     let depthWaistPixels = depthChestPixels * 0.9;
 
-    // Fallback if they are perfectly aligned
     if (depthChestPixels < frontWidthChest * 0.3) {
         depthChestPixels = frontWidthChest * 0.6;
         depthWaistPixels = frontWidthWaist * 0.6;
     }
 
-    // Circumference = PI * sqrt(2 * ((Width/2)^2 + (Depth/2)^2))
     const calculateEllipse = (width, depth) => {
         return Math.PI * Math.sqrt(2 * (Math.pow(width / 2, 2) + Math.pow(depth / 2, 2)));
     };
@@ -362,7 +384,7 @@ const predictWebcam = async () => {
             }
 
             if (!isHeightValid) {
-                instructionHeader.textContent = i18n[currentLang].enterHeight;
+                instructionHeader.innerHTML = i18n[currentLang].enterHeight;
                 statusBadge.style.opacity = "0";
                 canvasCtx.restore();
                 return;
@@ -372,13 +394,26 @@ const predictWebcam = async () => {
                 statusBadge.classList.remove("badge-gold");
                 viewfinderWrapper.classList.remove("aura-glow", "border-scan-white-pulse", "border-scan-green");
                 viewfinderWrapper.classList.add("border-scan-red");
-                instructionHeader.textContent = i18n[currentLang].stepBack;
+                instructionHeader.innerHTML = i18n[currentLang].stepBack;
                 statusBadge.style.opacity = "1";
                 statusIndicatorText.textContent = i18n[currentLang].scanning;
                 countdownStartTime = null;
             } else {
                 const landmarks = result.landmarks[0];
                 isReadyToScan = checkReadyToScan(landmarks);
+
+                const debugLogger = document.getElementById('debug-logger');
+                if (debugLogger) {
+                    if (scanPhase === 'SIDE') {
+                        debugLogger.classList.remove('hidden');
+                        const lShoulderVis = (landmarks[11].visibility || 0).toFixed(2);
+                        const rShoulderVis = (landmarks[12].visibility || 0).toFixed(2);
+                        const widthX = Math.abs(landmarks[11].x - landmarks[12].x).toFixed(3);
+                        debugLogger.innerHTML = `PHASE: SIDE\nL_Shoulder Vis: ${lShoulderVis}\nR_Shoulder Vis: ${rShoulderVis}\nWidth X: ${widthX}\nTrigger Threshold: < 0.12`;
+                    } else {
+                        debugLogger.classList.add('hidden');
+                    }
+                }
 
                 if (isReadyToScan) {
                     if (countdownStartTime === null) {
@@ -396,12 +431,18 @@ const predictWebcam = async () => {
                         statusIndicatorText.textContent = i18n[currentLang].ready;
                     } else {
                         if (scanPhase === 'FRONT') {
+                            // 1. Capture Data
                             captureFrontMeasurements(landmarks);
+
+                            // 2. Save Front Image to Server
+                            sendFrameToServer('front');
+
+                            // 3. Move to SIDE phase
                             scanPhase = 'SIDE';
                             countdownStartTime = null;
                             isReadyToScan = false;
 
-                            instructionHeader.textContent = i18n[currentLang].turnSide;
+                            instructionHeader.innerHTML = i18n[currentLang].turnSide;
                             statusBadge.classList.remove("badge-gold");
                             viewfinderWrapper.classList.remove("aura-glow", "border-scan-red", "border-scan-white-pulse", "border-scan-green");
                             statusIndicatorText.textContent = i18n[currentLang].scanning;
@@ -413,7 +454,8 @@ const predictWebcam = async () => {
                             return;
                         }
 
-                        instructionHeader.textContent = i18n[currentLang].scanComplete;
+                        // FINISHED SIDE SCAN
+                        instructionHeader.innerHTML = i18n[currentLang].scanComplete;
                         statusBadge.classList.remove("badge-gold");
                         viewfinderWrapper.classList.remove("aura-glow", "border-scan-red", "border-scan-white-pulse");
                         viewfinderWrapper.classList.add("border-scan-green");
@@ -426,6 +468,10 @@ const predictWebcam = async () => {
 
                         calculateFinalMeasurements(landmarks);
                         hasCaptured = true;
+
+                        // SAVE SIDE IMAGE TO SERVER
+                        sendFrameToServer('side');
+
                         video.pause();
                         webcamRunning = false;
 
@@ -438,21 +484,16 @@ const predictWebcam = async () => {
                             // Show bottom sheet
                             bottomSheet.classList.remove("translate-y-[150%]", "translate-y-[200%]");
                             bottomSheet.classList.add("translate-y-0");
-
                             document.body.classList.add("scroll-enabled");
                         }, 1000);
 
-                        // Solid skeleton line for captured state
+                        // Draw Final Frame Outline
                         canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
-
-                        // Draw the video as an anonymous, futuristic shadow
                         canvasCtx.save();
-                        // Apply heavy filters: blur destroys facial features, grayscale & contrast create a solid shape
                         canvasCtx.filter = 'blur(12px) grayscale(100%) contrast(300%) brightness(50%)';
-                        // Make it semi-transparent so it blends with the CSS digital grid behind it
                         canvasCtx.globalAlpha = 0.35;
                         canvasCtx.drawImage(video, 0, 0, canvasElement.width, canvasElement.height);
-                        canvasCtx.restore(); // Resets filters and alpha back to normal
+                        canvasCtx.restore();
 
                         const drawingUtils = new DrawingUtils(canvasCtx);
                         drawingUtils.drawConnectors(landmarks, PoseLandmarker.POSE_CONNECTIONS, {
@@ -464,29 +505,6 @@ const predictWebcam = async () => {
                             color: COLOR_SKELETON,
                             lineWidth: 0
                         });
-
-                        const tempCanvas = document.createElement("canvas");
-                        tempCanvas.width = video.videoWidth;
-                        tempCanvas.height = video.videoHeight;
-                        const tempCtx = tempCanvas.getContext("2d");
-                        tempCtx.drawImage(video, 0, 0, tempCanvas.width, tempCanvas.height);
-
-                        const dataUrl = tempCanvas.toDataURL("image/jpeg", 0.9);
-
-                        fetch('/save-frame', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ image: dataUrl })
-                        })
-                            .then(response => response.json())
-                            .then(data => {
-                                if (data.status === 'success') {
-                                    console.log('Frame saved to server:', data.filename);
-                                } else {
-                                    console.error('Error saving frame:', data.message);
-                                }
-                            })
-                            .catch(err => console.error('Fetch error:', err));
 
                         canvasCtx.restore();
                         return; // exit the loop
@@ -503,14 +521,11 @@ const predictWebcam = async () => {
 
                 // Normal scanning skeleton
                 if (!hasCaptured) {
-                    // Draw the video as an anonymous, futuristic shadow
                     canvasCtx.save();
-                    // Apply heavy filters: blur destroys facial features, grayscale & contrast create a solid shape
                     canvasCtx.filter = 'blur(12px) grayscale(100%) contrast(300%) brightness(50%)';
-                    // Make it semi-transparent so it blends with the CSS digital grid behind it
                     canvasCtx.globalAlpha = 0.35;
                     canvasCtx.drawImage(video, 0, 0, canvasElement.width, canvasElement.height);
-                    canvasCtx.restore(); // Resets filters and alpha back to normal
+                    canvasCtx.restore();
 
                     const drawingUtils = new DrawingUtils(canvasCtx);
                     drawingUtils.drawConnectors(landmarks, PoseLandmarker.POSE_CONNECTIONS, {
@@ -539,7 +554,6 @@ retakeBtn.addEventListener("click", () => {
     countdownStartTime = null;
     scanPhase = 'FRONT';
 
-    // Hide bottom sheet and reset states
     bottomSheet.classList.remove("translate-y-0");
     bottomSheet.classList.add("translate-y-[200%]");
     document.body.classList.remove("bg-darken");
@@ -555,7 +569,7 @@ retakeBtn.addEventListener("click", () => {
     resInseam.textContent = "--";
     resArm.textContent = "--";
 
-    instructionHeader.textContent = i18n[currentLang].preparing;
+    instructionHeader.innerHTML = i18n[currentLang].preparing;
     statusBadge.style.opacity = "1";
     statusIndicatorText.textContent = i18n[currentLang].scanning;
 
