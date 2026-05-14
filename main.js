@@ -145,6 +145,7 @@ let webcamRunning = false;
 let isReadyToScan = false;
 let lastVideoTime = -1;
 let countdownStartTime = null;
+let poseLostStartTime = null;
 const COUNTDOWN_DURATION_MS = 3000;
 let hasCaptured = false;
 
@@ -213,8 +214,8 @@ const enableCamera = async () => {
     }
 };
 
-// HELPER: Send frame to server
-const sendFrameToServer = (phaseName) => {
+// HELPER: save Frame
+const saveFrame = (phaseName) => {
     try {
         const tempCanvas = document.createElement("canvas");
         tempCanvas.width = video.videoWidth;
@@ -253,7 +254,7 @@ const checkReadyToScan = (landmarks) => {
         // Rely solely on the spatial horizontal overlap.
         const shoulderWidthX = Math.abs(leftShoulder.x - rightShoulder.x);
 
-        if (shoulderWidthX < 0.12) {
+        if (shoulderWidthX < 0.16) {
             return true;
         }
         return false;
@@ -404,13 +405,14 @@ const predictWebcam = async () => {
                         const lShoulderVis = (landmarks[11].visibility || 0).toFixed(2);
                         const rShoulderVis = (landmarks[12].visibility || 0).toFixed(2);
                         const widthX = Math.abs(landmarks[11].x - landmarks[12].x).toFixed(3);
-                        debugLogger.innerHTML = `PHASE: SIDE\nL_Shoulder Vis: ${lShoulderVis}\nR_Shoulder Vis: ${rShoulderVis}\nWidth X: ${widthX}\nTrigger Threshold: < 0.12`;
+                        debugLogger.innerHTML = `PHASE: SIDE\nL_Shoulder Vis: ${lShoulderVis}\nR_Shoulder Vis: ${rShoulderVis}\nWidth X: ${widthX}\nTrigger Threshold: < 0.16`;
                     } else {
                         debugLogger.classList.add('hidden');
                     }
                 }
 
                 if (isReadyToScan) {
+                    poseLostStartTime = null; // reset grace period when pose is good
                     if (countdownStartTime === null) {
                         countdownStartTime = performance.now();
                     }
@@ -430,7 +432,7 @@ const predictWebcam = async () => {
                             captureFrontMeasurements(landmarks);
 
                             // 2. Save Front Image to Server
-                            sendFrameToServer('front');
+                            saveFrame('front');
 
                             // 3. Move to SIDE phase
                             scanPhase = 'SIDE';
@@ -465,7 +467,7 @@ const predictWebcam = async () => {
                         hasCaptured = true;
 
                         // SAVE SIDE IMAGE TO SERVER
-                        sendFrameToServer('side');
+                        saveFrame('side');
 
                         video.pause();
                         webcamRunning = false;
@@ -505,13 +507,32 @@ const predictWebcam = async () => {
                         return; // exit the loop
                     }
                 } else {
-                    countdownStartTime = null;
-                    statusBadge.classList.remove("badge-gold");
-                    viewfinderWrapper.classList.remove("aura-glow", "border-scan-white-pulse", "border-scan-green");
-                    viewfinderWrapper.classList.add("border-scan-red");
-                    instructionHeader.innerHTML = scanPhase === 'FRONT' ? i18n[currentLang].standBack : i18n[currentLang].turnSide;
-                    statusBadge.style.opacity = "1";
-                    statusIndicatorText.textContent = i18n[currentLang].scanning;
+                    if (countdownStartTime !== null) {
+                        // Start the grace period timer if it hasn't started
+                        if (poseLostStartTime === null) {
+                            poseLostStartTime = performance.now();
+                        }
+                        // If the pose has been lost for more than 600ms, reset everything
+                        if (performance.now() - poseLostStartTime > 600) {
+                            countdownStartTime = null;
+                            poseLostStartTime = null;
+
+                            statusBadge.classList.remove("badge-gold");
+                            viewfinderWrapper.classList.remove("aura-glow", "border-scan-white-pulse", "border-scan-green");
+                            viewfinderWrapper.classList.add("border-scan-red");
+                            instructionHeader.innerHTML = scanPhase === 'FRONT' ? i18n[currentLang].standBack : i18n[currentLang].turnSide;
+                            statusBadge.style.opacity = "1";
+                            statusIndicatorText.textContent = i18n[currentLang].scanning;
+                        }
+                    } else {
+                        // Normal scanning state (not in countdown)
+                        statusBadge.classList.remove("badge-gold");
+                        viewfinderWrapper.classList.remove("aura-glow", "border-scan-white-pulse", "border-scan-green");
+                        viewfinderWrapper.classList.add("border-scan-red");
+                        instructionHeader.innerHTML = scanPhase === 'FRONT' ? i18n[currentLang].standBack : i18n[currentLang].turnSide;
+                        statusBadge.style.opacity = "1";
+                        statusIndicatorText.textContent = i18n[currentLang].scanning;
+                    }
                 }
 
                 // Normal scanning skeleton
