@@ -34,6 +34,7 @@ const i18n = {
         waist: "Waist",
         inseam: "Inseam",
         armLength: "Arm Length",
+        thighs: "Thighs",
         saveMeasurements: "Save Measurements",
         retakeScan: "Retake Scan",
         loading: "Loading Model...",
@@ -59,6 +60,7 @@ const i18n = {
         waist: "מותניים",
         inseam: "אורך רגל",
         armLength: "אורך זרוע",
+        thighs: "ירכיים",
         saveMeasurements: "שמור מידות",
         retakeScan: "סרוק מחדש",
         loading: "טוען מודל...",
@@ -102,6 +104,7 @@ const setLanguage = (lang) => {
         updateText("lbl-waist", t.waist);
         updateText("lbl-inseam", t.inseam);
         updateText("lbl-arm", t.armLength);
+        updateText("lbl-thighs", t.thighs);
         updateText("btn-save-text", t.saveMeasurements);
         updateText("btn-retake-text", t.retakeScan);
         updateText("loading-text", t.loading);
@@ -139,6 +142,7 @@ const resChest = document.getElementById("res-chest");
 const resWaist = document.getElementById("res-waist");
 const resInseam = document.getElementById("res-inseam");
 const resArm = document.getElementById("res-arm");
+const resThighs = document.getElementById("res-thighs");
 
 let poseLandmarker = null;
 let webcamRunning = false;
@@ -155,6 +159,7 @@ let frontWidthWaist = 0;
 let frontShoulderPixels = 0;
 let frontInseamPixels = 0;
 let frontArmPixels = 0;
+let frontWidthThighs = 0;
 let ratio = 1;
 
 const COLOR_SKELETON = "#39FF14";
@@ -327,6 +332,7 @@ const captureFrontMeasurements = (landmarks) => {
     const leftArmPixels = calculateDistance(landmarks[11], landmarks[15], vWidth, vHeight);
     const rightArmPixels = calculateDistance(landmarks[12], landmarks[16], vWidth, vHeight);
     frontArmPixels = (leftArmPixels + rightArmPixels) / 2;
+    frontWidthThighs = calculateDistance(landmarks[23], landmarks[24], vWidth, vHeight) * 1.15;
 };
 
 const calculateFinalMeasurements = (sideLandmarks) => {
@@ -338,6 +344,7 @@ const calculateFinalMeasurements = (sideLandmarks) => {
 
     let depthChestPixels = (maxX - minX) * vWidth * 2.0;
     let depthWaistPixels = depthChestPixels * 0.9;
+    let depthThighsPixels = depthWaistPixels * 1.2;
 
     if (depthChestPixels < frontWidthChest * 0.3) {
         depthChestPixels = frontWidthChest * 0.6;
@@ -350,12 +357,14 @@ const calculateFinalMeasurements = (sideLandmarks) => {
 
     const chestCircumferencePixels = calculateEllipse(frontWidthChest, depthChestPixels);
     const waistCircumferencePixels = calculateEllipse(frontWidthWaist, depthWaistPixels);
+    const thighsCircumferencePixels = calculateEllipse(frontWidthThighs, depthThighsPixels);
 
     resShoulders.textContent = (frontShoulderPixels * ratio).toFixed(1);
     resChest.textContent = (chestCircumferencePixels * ratio).toFixed(1);
     resWaist.textContent = (waistCircumferencePixels * ratio).toFixed(1);
     resInseam.textContent = (frontInseamPixels * ratio).toFixed(1);
     resArm.textContent = (frontArmPixels * ratio).toFixed(1);
+    resThighs.textContent = (thighsCircumferencePixels * ratio).toFixed(1);
 };
 
 const predictWebcam = async () => {
@@ -584,6 +593,7 @@ retakeBtn.addEventListener("click", () => {
     resWaist.textContent = "--";
     resInseam.textContent = "--";
     resArm.textContent = "--";
+    resThighs.textContent = "--";
 
     instructionHeader.innerHTML = i18n[currentLang].preparing;
     statusBadge.style.opacity = "1";
