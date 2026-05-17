@@ -13,6 +13,8 @@ const statusIndicatorText = document.getElementById("status-indicator-text");
 const retakeBtn = document.getElementById("retake-btn");
 const langToggle = document.getElementById("lang-toggle");
 const bottomSheet = document.getElementById("bottom-sheet");
+const onboardingScreen = document.getElementById("onboarding-screen");
+const scannerScreen = document.getElementById("scanner-screen");
 
 const i18n = {
     en: {
@@ -39,7 +41,10 @@ const i18n = {
         retakeScan: "Retake Scan",
         loading: "Loading Model...",
         errorLoading: "Error loading model",
-        enterHeight: "Please enter your height above to begin."
+        enterHeight: "Please enter your height above to begin.",
+        welcomeTitle: "Welcome to COUTURE",
+        welcomeDesc: "For precise 3D tailoring, please enter your height. You will be guided to stand in front of the camera and then turn to your side.",
+        startScanBtn: "Start Scan"
     },
     he: {
         heightPlaceholder: "גובה",
@@ -65,7 +70,10 @@ const i18n = {
         retakeScan: "סרוק מחדש",
         loading: "טוען מודל...",
         errorLoading: "שגיאה בטעינת המודל",
-        enterHeight: "אנא הזן את הגובה שלך כדי להתחיל."
+        enterHeight: "אנא הזן את הגובה שלך כדי להתחיל.",
+        welcomeTitle: "ברוכים הבאים ל-COUTURE",
+        welcomeDesc: "למדידה תלת-ממדית מדויקת, אנא הזן את גובהך. המערכת תנחה אותך לעמוד מול המצלמה ולאחר מכן להסתובב הצידה.",
+        startScanBtn: "התחל סריקה"
     }
 };
 
@@ -108,6 +116,9 @@ const setLanguage = (lang) => {
         updateText("btn-save-text", t.saveMeasurements);
         updateText("btn-retake-text", t.retakeScan);
         updateText("loading-text", t.loading);
+        updateText("welcome-title", t.welcomeTitle);
+        updateText("welcome-desc", t.welcomeDesc);
+        updateText("btn-start-scan", t.startScanBtn);
 
         if (typeof instructionHeader !== 'undefined' && instructionHeader) {
             // Only update if it's currently showing generic scanning text
@@ -128,6 +139,21 @@ document.addEventListener("DOMContentLoaded", () => {
     if (typeof langToggle !== 'undefined' && langToggle) {
         langToggle.addEventListener("click", () => {
             setLanguage(currentLang === "en" ? "he" : "en");
+        });
+    }
+
+    const startScanBtn = document.getElementById("btn-start-scan");
+    if (startScanBtn) {
+        startScanBtn.addEventListener("click", () => {
+            const heightVal = parseFloat(heightInput.value);
+            if (isNaN(heightVal) || heightVal <= 0) {
+                heightInput.classList.add("ring-2", "ring-red-400");
+                setTimeout(() => heightInput.classList.remove("ring-2", "ring-red-400"), 1500);
+                return;
+            }
+            onboardingScreen.classList.add("hidden");
+            scannerScreen.style.display = "flex";
+            initializeMediaPipe();
         });
     }
 });
@@ -603,4 +629,3 @@ retakeBtn.addEventListener("click", () => {
 });
 
 setLanguage("he"); // default
-initializeMediaPipe();
