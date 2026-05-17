@@ -16,7 +16,7 @@ const bottomSheet = document.getElementById("bottom-sheet");
 
 const i18n = {
     en: {
-        heightPlaceholder: "175",
+        heightPlaceholder: "Height",
         heightLabel: "Height:",
         heightUnit: "cm",
         preparing: "Preparing...",
@@ -41,7 +41,7 @@ const i18n = {
         enterHeight: "Please enter your height above to begin."
     },
     he: {
-        heightPlaceholder: "175",
+        heightPlaceholder: "גובה",
         heightLabel: 'גובה:',
         heightUnit: 'ס"מ',
         preparing: "מתכונן...",
