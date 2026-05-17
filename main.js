@@ -18,7 +18,7 @@ const scannerScreen = document.getElementById("scanner-screen");
 
 const i18n = {
     en: {
-        heightPlaceholder: "Height",
+        heightPlaceholder: "···",
         heightLabel: "Height:",
         heightUnit: "cm",
         preparing: "Preparing...",
@@ -47,7 +47,7 @@ const i18n = {
         startScanBtn: "Start Scan"
     },
     he: {
-        heightPlaceholder: "גובה",
+        heightPlaceholder: "···",
         heightLabel: 'גובה:',
         heightUnit: 'ס"מ',
         preparing: "מתכונן...",
